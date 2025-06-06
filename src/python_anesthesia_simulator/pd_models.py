@@ -8,11 +8,18 @@ def fsig(x, c50, gam): return x**gam/(c50**gam + x**gam)  # quick definition of 
 
 
 class BIS_model:
-    r"""Surface Response model to link Propofol and Remifentanil blood concentration to BIS.
+    r"""Model to link Propofol effect site concentration to BIS.
 
-    equation:
+    The equation is:
 
-    .. math:: BIS = E0 + Emax * \frac{U^\gamma}{1+U^\gamma}
+    .. math:: BIS = E0 - Emax * \frac{U^\gamma}{1+U^\gamma}
+
+    If only the effect of propofol is considered the equation represents a sigmoid function, where:
+
+    .. math:: U = \frac{C_{p,es}}{C_{p,50}}
+
+    If the interaction with remifentanil is considered the equation represents a Surface Response model, where:
+
     .. math:: U = \frac{U_p + U_r}{1 - \beta \theta + \beta \theta^2}
     .. math:: U_p = \frac{C_{p,es}}{C_{p,50}}
     .. math:: U_r = \frac{C_{r,es}}{C_{r,50}}
@@ -21,22 +28,24 @@ class BIS_model:
     Parameters
     ----------
     hill_model : str, optional
-        'Bouillon' [Bouillon2004]_ is available.
-        Ignored if hill_param is specified. Default is 'Bouilllon'.
+        'Bouillon' [Bouillon2004], considers the synergistic effect of remifentanil.
+        'Vanluchene' [Vanluchene2004], do not consider the synergistic effect of remifentanil.
+        Ignored if hill_param is specified.
+        Default is 'Bouillon'.
     hill_param : list, optional
-        Parameter of the Hill model (Propo Remi interaction)
+        Parameters of the model
         list [c50p_BIS, c50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]:
 
-        - **c50p_BIS**: Concentration at half effect for propofol effect on BIS (µg/mL)
-        - **c50r_BIS**: Concentration at half effect for remifentanil effect on BIS (ng/mL)
-        - **gamma_BIS**: slope coefficient for the BIS  model,
-        - **beta_BIS**: interaction coefficient for the BIS model,
-        - **E0_BIS**: initial BIS,
+        - **c50p_BIS**: Concentration at half effect for propofol effect on BIS (µg/mL).
+        - **c50r_BIS**: Concentration at half effect for remifentanil effect on BIS (ng/mL). If it is equal to zero the interaction with remifentanil is not considered.
+        - **gamma_BIS**: slope coefficient for the BIS  model.
+        - **beta_BIS**: interaction coefficient for the BIS model (beta_BIS = 0 signifies an additive interaction, beta_BIS > 0 indicates synergy).
+        - **E0_BIS**: initial BIS.
         - **Emax_BIS**: max effect of the drugs on BIS.
 
         The default is None.
     random : bool, optional
-        Add uncertainties in the parameters. Ignored if Hill_cruv is specified. The default is False.
+        Add uncertainties in the parameters. Ignored if hill_param is specified. The default is False.
     ts : float, optional
         Sampling time, in s. The default is 1.
 
@@ -45,17 +54,17 @@ class BIS_model:
     c50p : float
         Concentration at half effect for propofol effect on BIS (µg/mL).
     c50r : float
-        Concentration at half effect for remifentanil effect on BIS (ng/mL).
+        Concentration at half effect for remifentanil effect on BIS (ng/mL). If it is equal to zero the interaction with remifentanil is not considered.
     gamma : float
         slope coefficient for the BIS  model.
     beta : float
-        interaction coefficient for the BIS model.
+        interaction coefficient for the BIS model (beta_BIS = 0 signifies an additive interaction, beta_BIS > 0 indicates synergy).
     E0 : float
         initial BIS.
     Emax : float
         max effect of the drugs on BIS.
     hill_param : list
-        Parameter of the Hill model (Propo Remi interaction)
+        Parameters of the model
         list [c50p_BIS, c50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]
     c50p_init : float
         Initial value of c50p, used for blood loss modelling.
@@ -66,6 +75,10 @@ class BIS_model:
             Regarding Hypnosis, Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic
             Approximate Entropy,” Anesthesiology, vol. 100, no. 6, pp. 1353–1372, Jun. 2004,
             doi: 10.1097/00000542-200406000-00006.
+    .. [Vanluchene2004]  A. L. G. Vanluchene et al., “Spectral entropy as an electroencephalographic measure
+            of anesthetic drug effect: a comparison with bispectral index and processed midlatency auditory evoked
+            response,” Anesthesiology, vol. 101, no. 1, pp. 34–42, Jul. 2004,
+            doi: 10.1097/00000542-200407000-00008.        
 
     """
 
@@ -88,7 +101,7 @@ class BIS_model:
             self.Emax = hill_param[5]
 
         elif hill_model == 'Bouillon':
-            # See [1] T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil
+            # See [Bouillon2004] T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil
             # Regarding Hypnosis, Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic
             # Approximate Entropy,” Anesthesiology, vol. 100, no. 6, pp. 1353–1372, Jun. 2004,
             # doi: 10.1097/00000542-200406000-00006.
@@ -107,6 +120,27 @@ class BIS_model:
             cv_beta = 0
             cv_E0 = 0
             cv_Emax = 0
+
+        elif hill_model == 'Vanluchene':
+            # See [Vanluchene2004]  A. L. G. Vanluchene et al., “Spectral entropy as an electroencephalographic measure
+            # of anesthetic drug effect: a comparison with bispectral index and processed midlatency auditory evoked
+            # response,” Anesthesiology, vol. 101, no. 1, pp. 34–42, Jul. 2004,
+            # doi: 10.1097/00000542-200407000-00008.
+
+            self.c50p = 4.92
+            self.c50r = 0
+            self.gamma = 2.69
+            self.beta = 0
+            self.E0 = 95.9
+            self.Emax = 87.5
+
+            # coefficient of variation
+            cv_c50p = 0.34
+            cv_c50r = 0
+            cv_gamma = 0.32
+            cv_beta = 0
+            cv_E0 = 0.04
+            cv_Emax = 0.11
 
         if random and hill_param is None:
             # estimation of log normal standard deviation
@@ -128,15 +162,16 @@ class BIS_model:
         self.hill_param = [self.c50p, self.c50r, self.gamma, self.beta, self.E0, self.Emax]
         self.c50p_init = self.c50p  # for blood loss modelling
 
-    def compute_bis(self, c_es_propo: float, c_es_remi: float) -> float:
-        """Compute BIS function from Propofol and Remifentanil effect site concentration.
+    def compute_bis(self, c_es_propo: float, c_es_remi: float = 0) -> float:
+        """Compute BIS function from Propofol (and optionally Remifentanil) effect site concentration.
+        If the BIS model chosen considers only the effect of propofol the effect site concentration of remifentanil is ignored.
 
         Parameters
         ----------
-        cep : float
+        c_es_propo : float
             Propofol effect site concentration µg/mL.
-        cer : float
-            Remifentanil effect site concentration ng/mL
+        c_es_remi : float, optional
+            Remifentanil effect site concentration ng/mL. The default is 0.
 
         Returns
         -------
@@ -144,14 +179,20 @@ class BIS_model:
             Bis value.
 
         """
-        up = c_es_propo / self.c50p
-        ur = c_es_remi / self.c50r
-        Phi = up/(up + ur + 1e-6)
-        U_50 = 1 - self.beta * (Phi - Phi**2)
-        interaction = (up + ur)/U_50
+        if self.c50r == 0:
+            interaction = c_es_propo / self.c50p
+            
+        elif self.c50r != 0: 
+            up = c_es_propo / self.c50p
+            ur = c_es_remi / self.c50r
+            Phi = up/(up + ur + 1e-6)
+            U_50 = 1 - self.beta * (Phi - Phi**2)
+            interaction = (up + ur)/U_50
+                    
         bis = self.E0 - self.Emax * interaction ** self.gamma / (1 + interaction ** self.gamma)
-
+        
         return bis
+
 
     def update_param_blood_loss(self, v_ratio: float):
         """Update PK coefficient to mimic a blood loss.
@@ -177,7 +218,7 @@ class BIS_model:
         self.c50p = self.c50p_init - 3/0.5*(1-v_ratio)
 
     def inverse_hill(self, BIS: float, c_es_remi: float = 0) -> float:
-        """Compute Propofol effect site concentration from BIS and Remifentanil effect site concentration.
+        """Compute Propofol effect site concentration from BIS (and optionally Remifentanil effect site concentration if the BIS model chosen takes into acount interaction) .
 
         Parameters
         ----------
@@ -192,40 +233,59 @@ class BIS_model:
             Effect site Propofol concentration (µg/mL).
 
         """
-        temp = (max(0, self.E0-BIS)/(self.Emax-self.E0+BIS))**(1/self.gamma)
-        Yr = c_es_remi / self.c50r
-        b = 3*Yr - temp
-        c = 3*Yr**2 - (2 - self.beta) * Yr * temp
-        d = Yr**3 - Yr**2*temp
 
-        p = np.poly1d([1, b, c, d])
+        if self.c50r == 0:
+            cep = self.c50p * ((self.E0-BIS)/(self.Emax-self.E0+BIS))**(1/self.gamma)
+        elif self.c50r != 0:
+            temp = (max(0, self.E0-BIS)/(self.Emax-self.E0+BIS))**(1/self.gamma)
+            Yr = c_es_remi / self.c50r
+            b = 3*Yr - temp
+            c = 3*Yr**2 - (2 - self.beta) * Yr * temp
+            d = Yr**3 - Yr**2*temp
 
-        real_root = 0
-        try:
-            for el in np.roots(p):
-                if np.real(el) == el and np.real(el) > 0:
-                    real_root = np.real(el)
-                    break
-            cep = real_root*self.c50p
-        except Exception as e:
-            print(f'bug: {e}')
+            p = np.poly1d([1, b, c, d])
+
+            real_root = 0
+            try:
+                for el in np.roots(p):
+                    if np.real(el) == el and np.real(el) > 0:
+                        real_root = np.real(el)
+                        break
+                cep = real_root*self.c50p
+            except Exception as e:
+                print(f'bug: {e}')
 
         return cep
 
     def plot_surface(self):
-        """Plot the 3D-Hill surface of the BIS related to Propofol and Remifentanil effect site concentration."""
-        cer = np.linspace(0, 4, 50)
-        cep = np.linspace(0, 6, 50)
-        cer, cep = np.meshgrid(cer, cep)
-        effect = 100 - self.compute_bis(cep, cer)
-        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-        surf = ax.plot_surface(cer, cep, effect, cmap=cm.jet, linewidth=0.1)
-        ax.set_xlabel('Remifentanil')
-        ax.set_ylabel('Propofol')
-        ax.set_zlabel('Effect')
-        fig.colorbar(surf, shrink=0.5, aspect=8)
-        ax.view_init(12, -72)
-        plt.show()
+        """Plot the 3D-Hill surface of the BIS related to Propofol and Remifentanil effect site concentration or the 2-D Hill curve of the BIS related to Propofol effect site concentration according to the BIS model chosen"""
+
+        if self.c50r == 0:
+            cep = np.linspace(0, 16, 17)
+            bis = self.compute_bis(cep)
+            plt.figure()
+            plt.plot(cep, bis)
+            plt.xlabel('Propofol Ce [μg/mL]')
+            plt.ylabel('BIS')
+            plt.grid(True)
+            plt.ylim(0, 100)
+            plt.show()
+            
+        elif self.c50r != 0:
+            cer = np.linspace(0, 8, 9)
+            cep = np.linspace(0, 12, 13)
+            cer, cep = np.meshgrid(cer, cep)
+            effect = self.compute_bis(cep, cer)
+            fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+            surf = ax.plot_surface(cer, cep, effect, cmap=cm.jet, linewidth=0.1)
+            ax.set_xlabel('Remifentanil Ce [ng/mL]')
+            ax.set_ylabel('Propofol Ce [μg/mL]')
+            ax.set_zlabel('BIS')
+            ax.set_zlim(0, 100)
+            ax.set_zticks(np.arange(0, 101, 10))
+            fig.colorbar(surf, shrink=0.5, aspect=8)
+            ax.view_init(20, 60, 0)
+            plt.show()
 
 
 class TOL_model():
