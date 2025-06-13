@@ -79,7 +79,19 @@ def compute_disturbances(time: float, dist_profil: str = 'realistic',
                                   [end_step/60-0.01,   10,  5, 0.3],
                                   [end_step/60,  0,  0,   0],
                                   [30,    0,  0,   0]])
-
+    elif dist_profil == 'intubation':
+        # Disturbance profile (A) as proposed in M. M. R. F. Struys, T. De Smet, S. Greenwald, A. R. Absalom, S. Bingé, and E. P. Mortier,
+        # “Performance Evaluation of Two Published Closed-loop Control Systems Using Bispectral Index Monitoring:
+        #  A Simulation Study,”
+        # Anesthesiology, vol. 100, no. 3, pp. 640–647, Mar. 2004, doi: 10.1097/00000542-200403000-00026.
+        Disturb_point = np.array([ # time, BIS signal, MAP, CO signals
+            [0, 0, 0, 0],
+            [start_step/60 - 0.01, 0, 0, 0],
+            [start_step/60, 20, 10, 0.5],
+            [end_step/60 - 0.01, 20, 10, 0.5],
+            [end_step/60, 0, 0, 0],
+            [30, 0, 0, 0]
+        ])
     elif dist_profil == 'null':
         return [0, 0, 0]
 
