@@ -16,7 +16,7 @@ class Patient:
     Parameters
     ----------
     Patient_characteristic: list
-        Patient_characteristic = [age (yr), height(cm), weight(kg), gender(0: female, 1: male)]
+        Patient_characteristic = [age (yr), height(cm), weight(kg), sex(0: female, 1: male)]
     co_base : float, optional
         Initial cardiac output. The default is None.
     hr_base : float, optional
@@ -29,8 +29,8 @@ class Patient:
         Name of the Remifentanil PK Model. The default is 'Minto'.
     model_nore : str, optional
         Name of the norepinephrine PK Model. The default is 'Beloeil'.
-    model_atracurium : str, optional
-        Name of the atracurium PK Model. The default is 'WardWeatherleyLago'.    
+    model_nmb : str, optional
+        Name of the atracurium or rocuronium PK Model. The default is 'Wierda'.    
     model_bis : str, optional
         Name of the BIS PD Model. The default is 'Bouillon'.
     model_loc : str, optional
@@ -46,18 +46,18 @@ class Patient:
         list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS, Delay_BIS].
         If Delay_BIS is not provided it is assumed equal to 0.
         The default is None.
-    atracurium_model_params : dict, optional
-        For "WardWeatherleyLago":
+    nmb_model_params : dict, optional
+        Only for atracutium, for "WardWeatherleyLago":
         dict {'V1', 'V2', 'Cl', 't12_alpha', 't12_beta', 'ke0', 'tau'}.     
         If it is not provided average values are used.    
-    atracurium_hill_params : dict, optional
-        For "WardWeatherleyLago":
-        dict {'c50', 'gamma'}.     
-        If it is not provided average values are used.    
+    nmb_hill_params : dict, optional
+        In the form:
+        dict {'c50', 'gamma', 'E0'}.     
+        If it is not provided, value from the models are used.    
     random_PK : bool, optional
         Add uncertainties in the Propofol and Remifentanil PK models. The default is False.
     random_PD : bool, optional
-        Add uncertainties in the BIS PD model. The default is False.
+        Add uncertainties in all the PD models. The default is False.
     co_update : bool, optional
         Turn on the option to update PK parameters thanks to the CO value. The default is False.
     save_data_bool : bool, optional
@@ -75,7 +75,7 @@ class Patient:
         Height of the patient (cm).
     weight : float
         Weight of the patient (kg).
-    gender : bool
+    sex : bool
         0 for female, 1 for male.
     co_base : float
         Initial cardiac output (L/min).
@@ -89,8 +89,8 @@ class Patient:
         Name of the remifentanil PK model.
     model_remi : str
         Name of the norepinephrine PK model.
-    model_atracurium : str
-        Name of the atracurium PK model.    
+    model_nmb : str
+        Name of the atracurium or rocuronium PK model.    
     model_bis : str
         Name of the BIS PD model.
     model_loc : str
@@ -103,16 +103,16 @@ class Patient:
         Parameter of the BIS model (Propo Remi interaction)
         list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS, Delay_BIS].
         If Delay_BIS is not provided it is assumed equal to 0.
-    atracurium_model_params : dict, optional
+    nmb_model_params : dict, optional
         For "WardWeatherleyLago":
             dict {'V1', 'V2', 'Cl', 't12_alpha', 't12_beta', 'ke0', 'tau'} 
-    atracurium_hill_params : dict, optional
+    nmb_hill_params : dict, optional
         For "WardWeatherleyLago":
             dict {'c50', 'gamma'}        
     random_PK : bool
         Add uncertainties in the Propofol and Remifentanil PK models.
     random_PD : bool
-        Add uncertainties in the BIS PD model.
+        Add uncertainties in all the PD models.
     co_update : bool
         Turn on the option to update PK parameters thanks to the CO value.
     save_data_bool : bool
@@ -125,8 +125,10 @@ class Patient:
         4-comparments model for Remifentanil.
     nore_pk : CompartmentModel
         1-comparments model for Norepinephrine.
-    atracurium_pk : CompartmentModel
-        4-comparments model for Atracurium.    
+    nmb_pk : CompartmentModel
+        4-comparments model for Rocuronium or Atracurium. 
+    nmb_drug : str
+        Either 'Atracurium' or 'Rocuronium'.   
     bis_pd : BIS_model
         Surface-response model for bis computation.
     tol_pd : TOL_model
@@ -175,15 +177,15 @@ class Patient:
                  model_propo: str = 'Schnider',
                  model_remi: str = 'Minto',
                  model_nore: str = 'Beloeil',
-                 model_atracurium: str = 'WardWeatherleyLago',
+                 model_nmb: str = 'Wierda',
                  model_bis: str = 'Bouillon',
                  model_loc: str = 'Kern',
-                 model_tof: str = 'Weatherley',
+                 model_tof: str = 'Wierda',
                  model_stimuli: str = 'null',
                  ts: float = 1,
                  hill_param: list = None,
-                 atracurium_model_params: dict = {},
-                 atracurium_hill_params: dict = {},
+                 nmb_model_params: dict = {},
+                 nmb_hill_params: dict = {},
                  random_PK: bool = False,
                  random_PD: bool = False,
                  co_update: bool = False,
@@ -202,7 +204,7 @@ class Patient:
         self.age = patient_characteristic[0]
         self.height = patient_characteristic[1]
         self.weight = patient_characteristic[2]
-        self.gender = patient_characteristic[3]
+        self.sex = patient_characteristic[3]
         self.co_base = co_base
         self.hr_base = hr_base
         self.map_base = map_base
@@ -210,11 +212,20 @@ class Patient:
         self.model_propo = model_propo
         self.model_remi = model_remi
         self.model_nore = model_nore
-        self.model_atracurium = model_atracurium
+        self.model_nmb = model_nmb
+        if model_nmb == "WardWeatherleyLago":
+            self.nmb_drug = 'Atracurium'
+            if model_tof != "Weatherley":
+                print("Warning: the correct PD TOF model associated to atracurium is Weatherley" +
+                      "model_tof should updated to this value for a coherent simulation")
+        else:
+            self.nmb_drug = 'Rocuronium'
+            if model_tof != model_nmb:
+                print("Warning: there is a mismatch between PK and PD model for rocuronium simulation")
         self.model_stimuli = model_stimuli
         self.hill_param = hill_param
-        self.atracurium_model_params = atracurium_model_params
-        self.atracurium_hill_params = atracurium_hill_params
+        self.nmb_model_params = nmb_model_params
+        self.nmb_hill_params = nmb_hill_params
         self.random_PK = random_PK
         self.random_PD = random_PD
         self.co_update = co_update
@@ -222,9 +233,9 @@ class Patient:
         self.bis_delay_max = bis_delay_max
 
         # LBM computation
-        if self.gender == 1:  # homme
+        if self.sex == 1:  # homme
             self.lbm = 1.1 * self.weight - 128 * (self.weight / self.height) ** 2
-        elif self.gender == 0:  # femme
+        elif self.sex == 0:  # femme
             self.lbm = 1.07 * self.weight - 148 * (self.weight / self.height) ** 2
 
         # Init PK models for all drugs
@@ -236,9 +247,14 @@ class Patient:
 
         self.nore_pk = CompartmentModel(patient_characteristic, self.lbm, drug="Norepinephrine",
                                         ts=self.ts, model=model_nore, random=random_PK, truncated=truncated)
-        self.atracurium_pk = AtracuriumModel(patient_characteristic,
-                                             ts=self.ts, model=model_atracurium,
-                                             model_params=atracurium_model_params)
+
+        if self.nmb_drug == "Atracurium":
+            self.nmb_pk = AtracuriumModel(patient_characteristic,
+                                                ts=self.ts, model=model_nmb,
+                                                model_params=nmb_model_params)
+        else:
+            self.nmb_pk = CompartmentModel(patient_characteristic, self.lbm, drug="Rocuronium",
+                                            ts=self.ts, model=model_nmb, random=random_PK, truncated=truncated)
 
         # Init PD model for BIS
         self.bis_pd = BIS_model(hill_model=model_bis, hill_param=hill_param, random=random_PD,
@@ -271,7 +287,7 @@ class Patient:
         self.co_base = self.hemo_pd.abase_hr * self.hemo_pd.abase_sv / 1000  # L/min
 
         # Init PD model fo TOF
-        self.tof_pd = TOF_model(hill_model=model_tof, hill_param=atracurium_hill_params)
+        self.tof_pd = TOF_model(patient_characteristic, hill_model=model_tof, hill_param=nmb_hill_params)
 
         # init blood loss volume
         self.blood_volume = self.propo_pk.v1
@@ -309,7 +325,7 @@ class Patient:
             self.init_dataframe()
             self.save_data()
 
-    def one_step(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0, u_atra: float = 0, sqi: float = 100,
+    def one_step(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0, u_nmb: float = 0, sqi: float = 100,
                  blood_rate: float = 0, dist: list = [0] * 3, noise: bool = True) -> tuple[float, float, float, float, float, float]:
         r"""
         Simulate one step time of the patient.
@@ -322,8 +338,8 @@ class Patient:
             Remifentanil infusion rate (µg/s). The default is 0.
         u_nore : float, optional
             Norepinephrine infusion rate (µg/s). The default is 0.
-        u_atra : float, optional
-            Atracurium infusion rate (µg/s). The default is 0.    
+        u_nmb : float, optional
+            Either Atracurium or Rocuronium infusion rate (µg/s). The default is 0.    
         sqi: float, optional
             Signal Quality Index of the BIS signal. It affects the BIS delay (expressed in seconds) according to the relationship proposed in [Wahlquist2025]_: :math:`bis\_delay = bis\_delay\_max * (1 - \frac{sqi}{100})`. The default is 100.
         blood_rate : float, optional
@@ -353,6 +369,8 @@ class Patient:
             self.propo_pk.update_param_CO(self.co / (self.co_base))
             self.remi_pk.update_param_CO(self.co / (self.co_base))
             self.nore_pk.update_param_CO(self.co / (self.co_base))
+            if self.nmb_drug == 'Rocuronium':
+                self.nmb_pk.update_param_CO(self.co / (self.co_base))
 
         # blood loss effect
         if blood_rate != 0 or self.blood_volume != self.blood_volume_init:
@@ -362,13 +380,13 @@ class Patient:
         self.c_es_propo = self.propo_pk.one_step(u_propo)
         self.c_es_remi = self.remi_pk.one_step(u_remi)
         self.c_blood_nore = self.nore_pk.one_step(u_nore)
-        self.c_es_atra = self.atracurium_pk.one_step(u_atra)
+        self.c_es_nmb = self.nmb_pk.one_step(u_nmb)
         # BIS
         self.bis = self.bis_pd.one_step(self.c_es_propo, self.c_es_remi)
         # TOL
         self.tol = self.tol_pd.compute_tol(self.c_es_propo, self.c_es_remi)
         # TOF
-        self.tof = self.tof_pd.compute_tof(self.c_es_atra)
+        self.tof = self.tof_pd.compute_tof(self.c_es_nmb)
         # Hemodynamic
         y_hemo = self.hemo_pd.one_step(
             self.propo_pk.x[0, 0],
@@ -409,7 +427,7 @@ class Patient:
             self.dataframe.loc[index, 'u_propo'] = u_propo
             self.dataframe.loc[index, 'u_remi'] = u_remi
             self.dataframe.loc[index, 'u_nore'] = u_nore
-            self.dataframe.loc[index, 'u_atra'] = u_atra
+            self.dataframe.loc[index, 'u_nmb'] = u_nmb
             self.dataframe.loc[index, 'SQI'] = sqi
             # compute time
             self.Time += self.ts
@@ -747,11 +765,11 @@ class Patient:
             - 'u_propo': Propofol infusion rate (mg/s)
             - 'u_remi': Remifentanil infusion rate (µg/s)
             - 'u_nore': Norepinephrine infusion rate (µg/s)
-            - 'u_atra': Atracurium infusion rate (µg/s)
+            - 'u_nmb': Either Atracurium or ROcuronium infusion rate (µg/s)
             - 'x_propo_1' to 'x_propo_4': States of the propofol PK model
             - 'x_remi_1' to 'x_remi_4': States of the remifentanil PK model
             - 'x_nore': State of the norepinephrine PK model
-            - 'x_atra_1' to 'x_atra_4': States of the atracurium PK model
+            - 'x_nmb_1' to 'x_nmb_4': States of the atracurium or rocuronium PK model
             - 'blood_volume': Blood volume (L)
 
         """
@@ -759,13 +777,13 @@ class Patient:
         column_names = ['Time',  # time
                         'BIS', 'SQI', 'LOC', 'TOL', 'TOF', 'MAP', 'CO',  # outputs
                         'TPR', 'SV', 'HR', 'SAP', 'DAP',  # outputs
-                        'u_propo', 'u_remi', 'u_nore', 'u_atra',  # inputs
+                        'u_propo', 'u_remi', 'u_nore', 'u_nmb',  # inputs
                         'blood_volume']  # nore concentration and blood volume
         propo_state_names = [f'x_propo_{i + 1}' for i in range(len(self.propo_pk.x))]
         remi_state_names = [f'x_remi_{i + 1}' for i in range(len(self.remi_pk.x))]
         nore_state_names = [f'x_nore_{i + 1}' for i in range(len(self.nore_pk.x))]
-        atra_state_names = [f'x_atra_{i + 1}' for i in range(len(self.atracurium_pk.x))]
-        column_names += propo_state_names + remi_state_names + nore_state_names + atra_state_names
+        nmb_state_names = [f'x_nmb_{i + 1}' for i in range(len(self.nmb_pk.x))]
+        column_names += propo_state_names + remi_state_names + nore_state_names + nmb_state_names
         self.dataframe = pd.DataFrame(columns=column_names, dtype=float)
 
     def save_data(self, inputs: list = [0, 0, 0, 0, 100]):
@@ -778,24 +796,24 @@ class Patient:
                     'SV': self.sv, 'HR': self.hr, 'MAP': self.map, 'CO': self.co,  # outputs
                     'SAP': sap, 'DAP': dap,
                     # inputs
-                    'u_propo': inputs[0], 'u_remi': inputs[1], 'u_nore': inputs[2], 'u_atra': inputs[3], 'SQI': inputs[4],
+                    'u_propo': inputs[0], 'u_remi': inputs[1], 'u_nore': inputs[2], 'u_nmb': inputs[3], 'SQI': inputs[4],
                     'blood_volume': self.blood_volume}  # blood volume
 
         line_x_propo = {f'x_propo_{i + 1}': self.propo_pk.x[i, 0] for i in range(len(self.propo_pk.x))}
         line_x_remi = {f'x_remi_{i + 1}': self.remi_pk.x[i, 0] for i in range(len(self.remi_pk.x))}
         line_x_nore = {f'x_nore_{i + 1}': self.nore_pk.x[i, 0] for i in range(len(self.nore_pk.x))}
-        line_x_atra = {f'x_atra_{i + 1}': self.atracurium_pk.x[i, 0] for i in range(len(self.atracurium_pk.x))}
+        line_x_nmb = {f'x_nmb_{i + 1}': self.nmb_pk.x[i, 0] for i in range(len(self.nmb_pk.x))}
         new_line.update(line_x_propo)
         new_line.update(line_x_remi)
         new_line.update(line_x_nore)
-        new_line.update(line_x_atra)
+        new_line.update(line_x_nmb)
         self.dataframe = pd.concat(
             [df for df in (self.dataframe, pd.DataFrame(new_line, index=[1], dtype=float)) if not df.empty],
             ignore_index=True
         )
 
-    def full_sim(self, u_propo: Optional[np.ndarray] = None, u_remi: Optional[np.ndarray] = None, u_nore: Optional[np.ndarray] = None, u_atra: Optional[np.ndarray] = None,
-                 x0_propo: Optional[np.array] = None, x0_remi: Optional[np.array] = None, x0_nore: Optional[np.array] = None, x0_atra: Optional[np.array] = None, interp=False) -> pd.DataFrame:
+    def full_sim(self, u_propo: Optional[np.ndarray] = None, u_remi: Optional[np.ndarray] = None, u_nore: Optional[np.ndarray] = None, u_nmb: Optional[np.ndarray] = None,
+                 x0_propo: Optional[np.array] = None, x0_remi: Optional[np.array] = None, x0_nore: Optional[np.array] = None, x0_nmb: Optional[np.array] = None, interp=False) -> pd.DataFrame:
         r"""Simulates the patient model using the drugs infusions profiles provided as inputs.
 
         Parameters
@@ -806,23 +824,23 @@ class Patient:
             Remifentanil infusion rate (µg/s). Must be a 1D array.
         u_nore : numpy array, optional
             Norepinephrine infusion rate (µg/s). Must be a 1D array.
-        u_atra : numpy array, optional
-            Atracurium infusion rate (µg/s). Must be a 1D array.    
+        u_nmb : numpy array, optional
+            Either Rocuronium or Atracurium infusion rate (µg/s). Must be a 1D array.    
         x0_propo : numpy array, optional
             Initial state of the propofol PK model. The default is zeros.
         x0_remi : numpy array, optional
             Initial state of the remifentanil PK model. The default is zeros.
         x0_nore : numpy array, optional
             Initial state of the norepinephrine PK model. The default is zeros.
-        x0_atra : numpy array, optional
-            Initial state of the atracurium PK model. The default is zeros.    
+        x0_nmb : numpy array, optional
+            Initial state of the rocuronium or atracurium PK model. The default is zeros.    
         interp : bool, optional
             Whether to use zero-order-hold (False, the default) or linear (True) interpolation for the input array.    
 
         Requirements
         ------------
-        - At least one of `u_propo`, `u_remi`, `u_nore` or `u_atra` must be provided.
-        - All input arrays (`u_propo`, `u_remi`, `u_nore`, 'u_atra') must have the same length.
+        - At least one of `u_propo`, `u_remi`, `u_nore` or `u_nmb` must be provided.
+        - All input arrays (`u_propo`, `u_remi`, `u_nore`, 'u_nmb') must have the same length.
           If any of them is not provided, it will be automatically filled with zeros to match the length of the others.
         - The simulation duration is determined by the length of the input arrays.
 
@@ -833,7 +851,7 @@ class Patient:
 
         """
         # INPUT check
-        if u_propo is None and u_remi is None and u_nore is None and u_atra is None:
+        if u_propo is None and u_remi is None and u_nore is None and u_nmb is None:
             raise ValueError('No input given')
         # Propofol infusion
         if u_propo is None:
@@ -842,7 +860,7 @@ class Patient:
             elif u_nore is not None:
                 u_propo = np.zeros_like(u_nore)
             else:
-                u_propo = np.zeros_like(u_atra)
+                u_propo = np.zeros_like(u_nmb)
         # Remifentanil infusion
         if u_remi is None:
             if u_propo is not None:
@@ -850,7 +868,7 @@ class Patient:
             elif u_nore is not None:
                 u_remi = np.zeros_like(u_nore)
             else:
-                u_remi = np.zeros_like(u_atra)
+                u_remi = np.zeros_like(u_nmb)
         # Norepinephrine infusion
         if u_nore is None:
             if u_propo is not None:
@@ -858,17 +876,17 @@ class Patient:
             elif u_remi is not None:
                 u_nore = np.zeros_like(u_remi)
             else:
-                u_nore = np.zeros_like(u_atra)
-        # Atracurium infusion
-        if u_atra is None:
+                u_nore = np.zeros_like(u_nmb)
+        # nmbcurium infusion
+        if u_nmb is None:
             if u_propo is not None:
-                u_atra = np.zeros_like(u_propo)
+                u_nmb = np.zeros_like(u_propo)
             elif u_remi is not None:
-                u_atra = np.zeros_like(u_remi)
+                u_nmb = np.zeros_like(u_remi)
             else:
-                u_atra = np.zeros_like(u_nore)
+                u_nmb = np.zeros_like(u_nore)
         # INPUT consistency check
-        if not (len(u_propo) == len(u_remi) and len(u_propo) == len(u_nore) == len(u_atra)):
+        if not (len(u_propo) == len(u_remi) and len(u_propo) == len(u_nore) == len(u_nmb)):
             raise ValueError('Inputs must have the same length')
 
         # init the dataframe
@@ -878,13 +896,13 @@ class Patient:
         x_propo = self.propo_pk.full_sim(u_propo, x0_propo, interp)
         x_remi = self.remi_pk.full_sim(u_remi, x0_remi, interp)
         x_nore = self.nore_pk.full_sim(u_nore, x0_nore, interp)
-        x_atra = self.atracurium_pk.full_sim(u_atra, x0_atra, interp)
+        x_nmb = self.nmb_pk.full_sim(u_nmb, x0_nmb, interp)
 
         # compute outputs
         bis = self.bis_pd.full_sim(x_propo[3, :], x_remi[3, :])
         tol = self.tol_pd.compute_tol(x_propo[3, :], x_remi[3, :])
         loc = self.loc_pd.compute_loc(x_propo[3, :], x_remi[3, :])
-        tof = self.tof_pd.compute_tof(x_atra[3, :])
+        tof = self.tof_pd.compute_tof(x_nmb[3, :])
         if x_nore.ndim == 1:
             y = self.hemo_pd.full_sim(x_propo[0, :], x_remi[0, :], x_nore[:])
         else:
@@ -903,15 +921,15 @@ class Patient:
             'Time': np.arange(0, len(u_propo) * self.ts, self.ts),
             'BIS': bis, 'LOC': loc, 'TOL': tol, 'TOF': tof, 'TPR': tpr, 'SV': sv,
             'HR': hr, 'MAP': map, 'CO': co, 'DAP': dap, 'SAP': sap,
-            'u_propo': u_propo, 'u_remi': u_remi, 'u_nore': u_nore, 'u_atra': u_atra
+            'u_propo': u_propo, 'u_remi': u_remi, 'u_nore': u_nore, 'u_nmb': u_nmb
         })
 
         for i in range(np.shape(x_propo)[0]):
             df['x_propo_' + str(i + 1)] = x_propo[i, :]
         for i in range(np.shape(x_remi)[0]):
             df['x_remi_' + str(i + 1)] = x_remi[i, :]
-        for i in range(np.shape(x_atra)[0]):
-            df['x_atra_' + str(i + 1)] = x_atra[i, :]
+        for i in range(np.shape(x_nmb)[0]):
+            df['x_nmb_' + str(i + 1)] = x_nmb[i, :]
         if x_nore.ndim == 1:
             df['x_nore'] = x_nore
         else:
@@ -920,7 +938,7 @@ class Patient:
 
         return df
 
-    def initialized_at_given_state(self, x0_atra: np.ndarray):
+    def initialized_at_given_state(self, x0_nmb: np.ndarray):
         r"""
         Initialize the atracurium linear model at the given state.
 
@@ -934,4 +952,4 @@ class Patient:
         None.
 
         """
-        self.atracurium_pk.initialize_state(x0_atra)
+        self.nmb_pk.initialize_state(x0_nmb)
