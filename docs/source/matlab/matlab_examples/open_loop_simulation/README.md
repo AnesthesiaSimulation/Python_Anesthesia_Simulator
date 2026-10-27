@@ -35,9 +35,9 @@ Import the simulator module and create a patient with specified parameters:
 simulator = py.importlib.import_module('python_anesthesia_simulator.simulator');
 
 % Define patient parameters
-age = 18; height = 170; weight = 60; gender = 0; sampling_time = 1;
+age = 18; height = 170; weight = 60; sex = 0; sampling_time = 1;
 
-George = simulator.Patient([age, height, weight, gender], ts = sampling_time);
+George = simulator.Patient([age, height, weight, sex], ts = sampling_time);
 ```
 
 ---

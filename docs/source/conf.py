@@ -37,6 +37,7 @@ extensions = [
     'sphinx.ext.autosummary',
     'nbsphinx',
     'myst_parser',
+    "sphinx.ext.graphviz",
 ]
 
 # list of autodoc directive flags that should be automatically applied
@@ -72,6 +73,7 @@ exclude_patterns = []
 #
 html_theme = "furo"
 html_logo = 'images/logo_pas.png'
+html_static_path = ['_static']
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

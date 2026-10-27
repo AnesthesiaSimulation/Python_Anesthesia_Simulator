@@ -69,7 +69,7 @@ simulation_time = 3600;   % 1 hour
 age    = 18;      % years
 height = 170;     % cm
 weight = 60;      % kg
-gender = 0;       % 0 = female, 1 = male
+sex = 0;       % 0 = female, 1 = male
 
 sampling_time = 1;   % [s]
 ```
@@ -88,7 +88,7 @@ The Simulink model `sim_openloop.slx` must contain:
 
 - A **MATLAB Function Block** that calls the function:
   ```matlab
-  [bis, co, map, tol, nmb] = PythonStep(u_p,u_r,u_n,u_a,age,height,weight,gender,sampling_time);
+  [bis, co, map, tol, nmb] = PythonStep(u_p,u_r,u_n,u_a,age,height,weight,sex,sampling_time);
   ```
 - The `PythonStep` block internally calls `callPython.m`, which manages communication with Python.
 

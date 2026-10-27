@@ -1,7 +1,7 @@
-function [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight,gender,sampling_time)
+function [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight,sex,sampling_time)
 % callPython  Interface between Simulink and the Python Anesthesia Simulator.
 %
-%   [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight,gender,sampling_time)
+%   [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight,sex,sampling_time)
 %   performs one simulation step of the Python patient model.
 %
 %   Inputs:
@@ -9,7 +9,7 @@ function [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight
 %       u_r  - Remifentanil infusion rate [µg/s]
 %       u_n  - Noradrenaline infusion rate [µg/s]
 %       u_a  - Atracurium infusion rate [mg/s]
-%       age, height, weight, gender - patient parameters
+%       age, height, weight, sex - patient parameters
 %       sampling_time - simulation sampling period [s]
 %
 %   Outputs:
@@ -28,7 +28,7 @@ function [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight
     % Initialize Python environment and patient once
     if isempty(simulator)
         simulator = py.importlib.import_module('python_anesthesia_simulator.simulator');
-        George = simulator.Patient([age, height, weight, gender], ts=sampling_time);
+        George = simulator.Patient([age, height, weight, sex], ts=sampling_time);
     end
 
     % Run one simulation step
@@ -36,8 +36,7 @@ function [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight
         u_propo=u_p, ...
         u_remi=u_r, ...
         u_nore=u_n, ...
-        u_atra=u_a, ...
-        noise=false);
+        u_atra=u_a);
 
     % Convert Python outputs to MATLAB doubles
     simulation_cell = cell(simulation_tuple);

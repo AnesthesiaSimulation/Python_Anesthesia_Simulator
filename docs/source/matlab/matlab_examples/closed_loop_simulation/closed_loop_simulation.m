@@ -13,7 +13,6 @@ clc
 env = pyenv('Version', ...
     'your_path\your_environment\Scripts\python.exe');
 
-
 % For Linux/macOS users
 % Replace '/Users/your_username/your_environment/bin/python' with the
 % actual path on your machine.
@@ -31,11 +30,11 @@ simulator =...
 age = 18;                           % years
 height = 170;                       % cm
 weight = 60;                        % kg
-gender = 0;                         % 0 = female, 1 = male
+sex = 0;                         % 0 = female, 1 = male
 sampling_time = 0.1;          % seconds
 
 % Creates a patient object with specified parameters
-George = simulator.Patient([age, height, weight, gender],...
+George = simulator.Patient([age, height, weight, sex],...
     ts = sampling_time);
 
 %% Controller Setup
@@ -86,8 +85,7 @@ uRem_k = PID_params.uref_r;
 
 % Perform an initial simulation step to obtain BIS_k
 simulation_tuple = George.one_step(u_propo=uProp_k,...
-        u_remi=uRem_k,...
-        noise = false);
+        u_remi=uRem_k);
 simulation_cell = cell(simulation_tuple);
 BIS_k = double(simulation_cell{1});
 
@@ -97,8 +95,7 @@ for k=1:1:N_simu
     [uProp_k, uRem_k] = pid_ratio(BIS_k, y_sp, PID_params);
 
     simulation_tuple = George.one_step(u_propo=uProp_k,...
-        u_remi=uRem_k,...
-        noise = false);
+        u_remi=uRem_k);
     simulation_cell = cell(simulation_tuple);
     BIS_k = double(simulation_cell{1});
 

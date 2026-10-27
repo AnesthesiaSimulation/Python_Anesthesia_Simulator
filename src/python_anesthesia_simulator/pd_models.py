@@ -6,7 +6,6 @@ from scipy.stats import truncnorm
 import casadi as cas
 from matplotlib import pyplot as plt
 from matplotlib import cm
-from scipy.signal import TransferFunction, lfilter
 
 
 def fsig(x, c50, gam): return x**gam / (c50**gam + x**gam)  # quick definition of sigmoidal function
@@ -891,41 +890,7 @@ class TOL_model():
 class Hemo_meca_PD_model:
     r"""This class implements the mechanically based model of Haemodynamics proposed in [Su2023]_.
 
-    Particularly, Haemodynamics are considered to be a dynamical system with the following dynamics:
-
-    .. math::
-
-        \dot{TPR} = k_{in\_TPR} RMAP^{FB} (1+EFF_{prop\_TPR}) - k_{out} TPR (1 - EFF_{remi\_TPR})
-
-    .. math::
-
-        \dot{SV^*} = k_{in\_SV} RMAP^{FB} (1+EFF_{prop\_SV}) - k_{out} SV^* (1 - EFF_{remi\_SV})
-
-    .. math::
-
-        \dot{HR^*} = k_{in\_HR} RMAP^{FB} - k_{out} HR^* (1 - EFF_{remi\_HR})
-
-    Where TPR stands for total peripheral resistance, SV for stroke volume, and HR for heart rate.
-    The different effects are sigmoid functions depending on propofol and remifentanil concentrations.
-
-    Moreover, we consider the effect of norepinephrine on the haemodynamics as a simple addition of a sigmoid curve
-    to MAP from the models of [Beloeil2005]_ and [Oualha2014]_. To model the implications of norepinephrine, we use:
-
-    .. math::
-
-        MAP\_wanted(t) = MAP_{no\_nore}(t) + norepinephrine\_effect(t)
-
-    where :math:`MAP_{no\_nore}(t)` is the MAP computed without norepinephrine, and
-    :math:`norepinephrine\_effect(t)` is the effect of norepinephrine on MAP modeled by a sigmoid function.
-    The dynamics of TPR including norepinephrine is then:
-
-    .. math::
-
-        \begin{align}
-        \dot{TPR}(t) = & \frac{k_{in\_TPR}}{RMAP(t)^{FB}}(1 + EFF_{prop\_TPR}(t)) \\
-        & - k_{out} TPR(t) (1 - EFF_{remi\_TPR}(t)) \\
-        & + k_{nore}(MAP_{wanted}(t)- MAP(t))
-        \end{align}
+    See section :ref:`hemodynamics` for detail about the model implemented here. 
 
     Parameters
     ----------
@@ -934,11 +899,9 @@ class Hemo_meca_PD_model:
     ts : float
         Sampling time in seconds.
     model : str, optional
-        Model to use, only 'Su' is available. The default is 'Su'.
+        Model to use, 'Su' (see [Su2023]_) and 'VitalDB' (see :ref:`disurbance_identification`) are available. The default is 'Su'.
     nore_model : str, optional
         Model to use for norepinephrine, 'Beloeil' and 'Oualha' are available. The default is 'Beloeil'.
-    stimuli_model : str, optional
-        Model to use for stimuli, 'none' and 'VitalDB' are available. The default is 'none'.
     random : bool, optional
         Add uncertainties in the parameters. The default is False.
     hr_base : float, optional
@@ -972,7 +935,6 @@ class Hemo_meca_PD_model:
                  ts: float,
                  model: str = 'Su',
                  nore_model: str = 'Beloeil',
-                 stimuli_model: str = 'null',
                  random: bool = False,
                  truncated: bool = False,
                  hr_base: float = None,
@@ -989,7 +951,7 @@ class Hemo_meca_PD_model:
         """
         self.ts = ts
 
-        if model == 'Su':
+        if model == 'Su' or model == 'VitalDB':
             self.sv_base = 82.2
             self.hr_base = 56.1
             self.tpr_base = 0.0163
@@ -1015,10 +977,14 @@ class Hemo_meca_PD_model:
             self.int_tpr = 1
             self.int_sv = -0.212  # (ng/ml)
 
-            if stimuli_model == 'VitalDB':
+            if model == 'VitalDB':
                 self.sv_base = 93.1 / (1 + self.ltde_hr)
                 self.hr_base = 74.7 / (1 + self.ltde_sv)
                 self.tpr_base = 102 / (74.7 * 93.1)
+                # update model param
+                self.int_hr = -0.097
+                self.emax_propo_tpr = -0.03
+                self.fb = -0.5
 
             if hr_base is not None:
                 self.hr_base = hr_base / (1 + self.ltde_hr)
@@ -1032,7 +998,7 @@ class Hemo_meca_PD_model:
                 [-0.0244, 0.0328, 0],
                 [-0.0233, 0, 0.0242]
             ]
-            if stimuli_model == "VitalDB":
+            if model == "VitalDB":
                 self.w_block1_cov = np.array([[0.09085827, -0.07249175, -0.01973828],
                                               [-0.07249175,  0.09255021, -0.00040959],
                                               [-0.01973828, -0.00040959,  0.02315553]])
@@ -1044,7 +1010,7 @@ class Hemo_meca_PD_model:
             self.w_emax_remi_tpr = np.sqrt(0.449)
 
         else:
-            raise ValueError("only Su is implemented as model")
+            raise ValueError("only Su and VitalDB are implemented as model")
         if nore_model == 'Beloeil':
             # see H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, “Norepinephrine kinetics and dynamics
             # in septic shock and trauma patients,” BJA: British Journal of Anaesthesia,
@@ -1053,7 +1019,7 @@ class Hemo_meca_PD_model:
             self.c50_nore_map = 7.04
             self.gamma_nore_map = 1.8
             w_emax_nore_map = 0
-            w_c50_nore_map = 1.64
+            w_c50_nore_map = np.sqrt(np.log(1+1.64/self.c50_nore_map**2))
             w_gamma_nore_map = 0
         elif nore_model == 'Oualha':
             # see M. Oualha et al., “Population pharmacokinetics and haemodynamic effects of norepinephrine
@@ -1147,89 +1113,7 @@ class Hemo_meca_PD_model:
         self.previous_cp_propo = 0
         self.previous_cp_remi = 0
 
-        # stimuli models
-        self.dist_intub_tpr_tau = 3
-        self.dist_intub_sv_tau = 2.7
-        self.dist_intub_hr_tau = 40
-        self.smooth_factor = 50
-        self.dist_surg_tpr_tau = 5 * 60
-        self.dist_surg_sv_tau = 3 * 60
-        self.dist_surg_hr_tau = 8 * 60
-        if stimuli_model == 'null':
-            # intubation stimuli filter
-            self.dist_intub_tpr_k = 1e-8
-            self.dist_intub_sv_k = 1e-6
-            self.dist_intub_hr_k = 1e-6
-
-            self.dist_surg_tpr_k = 1e-8
-            self.dist_surg_sv_k = 1e-6
-            self.dist_surg_hr_k = 1e-6
-        elif stimuli_model == 'VitalDB':
-            self.dist_intub_tpr_k = 8.8e-6
-            self.dist_intub_sv_k = 0.176
-            self.dist_intub_hr_k = 11.94
-
-            self.dist_surg_tpr_k = 8.8e-4
-            self.dist_surg_sv_k = 13.65
-            self.dist_surg_hr_k = 9.92
-
-            # update model param
-            self.int_hr = -0.097
-            self.emax_propo_tpr = -0.03
-            self.fb = -0.5
-        self.start_intub = 3 * 60  # seconds
-        self.start_surg = 40 * 60  # seconds
         self.time_id = 0
-
-        self.disturbance_dynamic()
-
-    def disturbance_dynamic(self):
-        """Apply the dynamic on the input disturbance signal.
-        """
-        # stimuli input
-        self.intub_input = np.zeros(50000)
-        # step disturbance after 3 minutes
-        self.intub_input[self.start_intub // self.ts:(self.start_intub + 2 * 60) // self.ts] = 1
-        self.surg_input = np.zeros(50000)
-        self.surg_input[self.start_surg // self.ts:] = 1  # step disturbance after 40 minutes
-        smooth_filter = TransferFunction(
-            [1],
-            [self.smooth_factor, 1]
-        ).to_discrete(self.ts, method='bilinear')
-        tf_dist_tpr = TransferFunction(
-            [self.dist_intub_tpr_k],
-            [self.dist_intub_tpr_tau, 1, 0]
-        ).to_discrete(self.ts, method='bilinear')
-        tf_dist_sv = TransferFunction(
-            [self.dist_intub_sv_k],
-            [self.dist_intub_sv_tau, 1, 0]
-        ).to_discrete(self.ts, method='bilinear')
-        tf_dist_hr = TransferFunction(
-            [self.dist_intub_hr_k],
-            [self.dist_intub_hr_tau, 1]
-        ).to_discrete(self.ts, method='bilinear')
-
-        input_smooth = lfilter(smooth_filter.num, smooth_filter.den, self.intub_input)
-        self.dist_tpr = lfilter(tf_dist_tpr.num, tf_dist_tpr.den, input_smooth)
-        self.dist_sv = lfilter(tf_dist_sv.num, tf_dist_sv.den, input_smooth)
-        self.dist_hr = lfilter(tf_dist_hr.num, tf_dist_hr.den, input_smooth)
-
-        tf_dist_tpr = TransferFunction(
-            [self.dist_surg_tpr_k],
-            [self.dist_surg_tpr_tau**2, 2 * self.dist_surg_tpr_tau, 1]
-        ).to_discrete(self.ts, method='bilinear')
-        tf_dist_sv = TransferFunction(
-            [self.dist_surg_sv_k],
-            [self.dist_surg_sv_tau**2, 2 * self.dist_surg_sv_tau, 1]
-        ).to_discrete(self.ts, method='bilinear')
-        tf_dist_hr = TransferFunction(
-            [self.dist_surg_hr_k],
-            [self.dist_surg_hr_tau**2, 2 * self.dist_surg_hr_tau, 1]
-        ).to_discrete(self.ts, method='bilinear')
-
-        self.dist_tpr += lfilter(tf_dist_tpr.num, tf_dist_tpr.den, self.surg_input)
-        self.dist_sv += lfilter(tf_dist_sv.num, tf_dist_sv.den, self.surg_input)
-        self.dist_hr += lfilter(tf_dist_hr.num, tf_dist_hr.den, self.surg_input)
 
     def continuous_dynamic(
             self,
@@ -1245,7 +1129,7 @@ class Hemo_meca_PD_model:
         x : np.ndarray
             state array composed of tpr, sv, hr, ltde_sv, ltde_hr.
         u: np.ndarray
-            u = [cp_propo, cp_remi, map_wanted, sv_wanted], plasma concentration of propofol (µg/ml) and remifentanil (ng/ml).
+            u = [cp_propo, cp_remi, map_wanted, sv_wanted, tpr_stim, sv_stim, hr_stim], plasma concentration of propofol (µg/ml) and remifentanil (ng/ml), map wanted (for norepinephrine simulation), sv_wanted (for blood loss simulation) and stimuli value for stimuli application. 
 
         Returns
         -------
@@ -1311,7 +1195,7 @@ class Hemo_meca_PD_model:
         return self.continuous_dynamic(x, u)
 
     def output_function(self, x: np.ndarray, dist: np.ndarray = np.zeros(3)) -> np.ndarray:
-        """_summary_
+        """Compute final signals value from state and disturbance value.
 
         Parameters
         ----------
@@ -1350,6 +1234,7 @@ class Hemo_meca_PD_model:
             cp_remi: float = 0,
             cp_nore: float = 0,
             v_ratio: float = 1,
+            disturbances: list = None,
     ) -> np.ndarray:
         """Compute one step time of the hemodynamic system.
 
@@ -1365,16 +1250,15 @@ class Hemo_meca_PD_model:
             current plasma concentration of norepinephrine (ng/ml), default is 0.
         v_ratio : float
             blood volume as a fraction of init volume, 1 mean no loss, 0 mean 100% loss, default is 1.
-        """
-        # simulate disturbance
-        dist_tpr = self.dist_tpr[self.time_id]
-        dist_sv = self.dist_sv[self.time_id]
-        dist_hr = self.dist_hr[self.time_id]
-        dist = [dist_tpr, dist_sv, dist_hr]
-        self.time_id += 1
-        if self.time_id >= len(self.intub_input):
-            self.time_id = len(self.intub_input) - 1
+        disturbances : list
+            disturbance on TPR, SV, and HR (in this order). The default is [0]*3.
 
+        Return
+        -------
+
+        """
+        if disturbances is None:
+            disturbances = [0]*3
         c_propo_sim = (self.previous_cp_propo + cp_propo) / 2
         c_remi_sim = (self.previous_cp_remi + cp_remi) / 2
         # run computation for model without nore effect and without blood loss
@@ -1383,7 +1267,7 @@ class Hemo_meca_PD_model:
             t_span=np.array([0, self.ts]),
             t_eval=np.array([0, self.ts]),
             y0=self.x,
-            args=([c_propo_sim, c_remi_sim, 0, 0] + dist,),
+            args=([c_propo_sim, c_remi_sim, 0, 0] + disturbances,),
         )
         self.x = results.y[:, -1]
 
@@ -1392,14 +1276,14 @@ class Hemo_meca_PD_model:
                 self.flag_nore_used = True
             if v_ratio != 1:
                 print("Warning: norepinephrine effect is not computed with blood loss")
-            map_no_nore = self.output_function(self.x, dist)[3]
+            map_no_nore = self.output_function(self.x, disturbances)[3]
             map_wanted = map_no_nore + self.nore_map_effect(cp_nore)
             # run computation for model with nore effect
             results_w_nore = solve_ivp(
                 self.continuous_dynamic_sys,
                 t_span=np.array([0, self.ts]),
                 y0=self.x_effect,
-                args=([c_propo_sim, c_remi_sim, map_wanted, 0] + dist,),
+                args=([c_propo_sim, c_remi_sim, map_wanted, 0] + disturbances,),
             )
             self.x_effect = results_w_nore.y[:, -1]
         elif (v_ratio < 1 or self.flag_blood_loss) and not self.flag_nore_used:
@@ -1407,13 +1291,13 @@ class Hemo_meca_PD_model:
                 self.flag_blood_loss = True
             if cp_nore > 0:
                 print("Warning: norepinephrine effect is not computed with blood loss")
-            sv_no_blood_loss = self.output_function(self.x, dist)[1]
+            sv_no_blood_loss = self.output_function(self.x, disturbances)[1]
             sv_wanted = sv_no_blood_loss * v_ratio
             results_blood_loss = solve_ivp(
                 self.continuous_dynamic_sys,
                 t_span=np.array([0, self.ts]),
                 y0=self.x_effect,
-                args=([c_propo_sim, c_remi_sim, 0, sv_wanted] + dist,),
+                args=([c_propo_sim, c_remi_sim, 0, sv_wanted] + disturbances,),
             )
             self.x_effect = results_blood_loss.y[:, -1]
         else:
@@ -1421,13 +1305,14 @@ class Hemo_meca_PD_model:
 
         self.previous_cp_propo = cp_propo
         self.previous_cp_remi = cp_remi
-        output = self.output_function(self.x_effect, dist)
+        output = self.output_function(self.x_effect, disturbances)
         return output  # tpr, sv, hr, map, co
 
     def full_sim(self,
                  cp_propo: np.ndarray,
                  cp_remi: np.ndarray,
                  cp_nore: np.ndarray,
+                 disturbances: np.ndarray = None,
                  x0: Optional[np.ndarray] = None
                  ) -> np.ndarray:
         """ Simulate hemodynamic model with a given input.
@@ -1439,7 +1324,9 @@ class Hemo_meca_PD_model:
         cp_remi : np.ndarray
             list of plasma concentration of remifentanil (ng/ml).
         cp_nore : np.ndarray
-            list of plasma concentration of norepinephrine (ng/ml). 
+            list of plasma concentration of norepinephrine (ng/ml).
+        disturbance : np.ndarray
+            N*3 array of distrubance signal for TPR, SV and HR.
         x0 : np.ndarray, optional
             Initial state. The default is None.
 
@@ -1453,10 +1340,17 @@ class Hemo_meca_PD_model:
         if x0 is not None:
             self.x = x0
             self.x_no_nore = x0
+        if disturbances is None:
+            disturbances = np.zeros((len(cp_propo), 3))
 
         y_output = np.zeros((len(cp_propo), 5))
         for index in range(len(cp_propo)):
-            y_output[index, :] = self.one_step(cp_propo[index], cp_remi[index], cp_nore[index])
+            y_output[index, :] = self.one_step(
+                cp_propo[index],
+                cp_remi[index],
+                cp_nore[index],
+                disturbances=list(disturbances[index, :])
+            )
 
         return y_output
 
@@ -1465,6 +1359,7 @@ class Hemo_meca_PD_model:
             cp_propo_eq: float = 0,
             cp_remi_eq: float = 0,
             cp_nore_eq: float = 0,
+            disturbances: list = None,
             x0: np.ndarray = None,
     ) -> np.ndarray:
         """Solve the problem f(x,u)=0 for the continuous dynamique with a given u.
@@ -1477,6 +1372,8 @@ class Hemo_meca_PD_model:
             plasma concentration of remifentanil  at equilibrium (ng/ml).
         cp_nore : float
             plasma concentration of norepinephrine  at equilibrium (ng/ml).
+        disturbance: list
+            disturbance on TPR, SV, and HR (in this order). The default is [0]*3.
         x0 : np.ndarray, optional
             Initial state. The default is None.
 
@@ -1485,17 +1382,13 @@ class Hemo_meca_PD_model:
         np.ndarray
             List of the output value at equilibrium.
         """
-
+        if disturbances is None:
+            disturbances = [0]*3
         if x0 is None:
             x0 = self.x
-        dist_equilibrium = [
-            self.dist_tpr[-1],
-            self.dist_sv[-1],
-            self.dist_hr[-1]
-        ]
         # solve equilibrium without nore
         x = cas.MX.sym('x', 5)
-        dx = cas.vertcat(*self.continuous_dynamic(x, [cp_propo_eq, cp_remi_eq, 0, 0] + dist_equilibrium))
+        dx = cas.vertcat(*self.continuous_dynamic(x, [cp_propo_eq, cp_remi_eq, 0, 0] + disturbances))
         F_root = cas.rootfinder('F_root', 'newton', {'x': x, 'g': dx})
         sol = F_root(x0=x0)
         x_no_nore = sol['x'].full().flatten()
@@ -1503,11 +1396,11 @@ class Hemo_meca_PD_model:
 
         # if nore is used, solve equilibrium with nore
         if cp_nore_eq > 0:
-            output_no_nore = self.output_function(x_no_nore, dist=dist_equilibrium)
+            output_no_nore = self.output_function(x_no_nore, dist=disturbances)
             map_eq = output_no_nore[3] + self.nore_map_effect(cp_nore_eq)
             # solve equilibrium with nore
             x = cas.MX.sym('x', 5)
-            dx = cas.vertcat(*self.continuous_dynamic(x, [cp_propo_eq, cp_remi_eq, map_eq, 0] + dist_equilibrium))
+            dx = cas.vertcat(*self.continuous_dynamic(x, [cp_propo_eq, cp_remi_eq, map_eq, 0] + disturbances))
             # map_nore = self.output_function(x)[3]
             # dx[0] = (map_nore - map_eq)**2
             F_root = cas.rootfinder('F_root', 'newton', {'x': x, 'g': dx})
@@ -1517,7 +1410,7 @@ class Hemo_meca_PD_model:
         else:
             x_eq_out = x_no_nore
 
-        output = self.output_function(x_eq_out, dist=dist_equilibrium)
+        output = self.output_function(x_eq_out, dist=disturbances)
         self.x_eq_w_nore = x_eq_out
 
         return output

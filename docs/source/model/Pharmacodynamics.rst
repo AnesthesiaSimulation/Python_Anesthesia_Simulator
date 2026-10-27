@@ -94,6 +94,7 @@ The surface of the 3D-Hill function using parameters from [Bouillon2004]_ is sho
    :alt: 3D-Hill function
 
 .. _delay:
+
 Delay
 ~~~~~~~~~~~~~~
 
@@ -168,6 +169,7 @@ where :math:`preopioid` is the tolerance of laryngoscopy without remifentanil, :
 
 
 .. _hemodynamics:
+
 Hemodynamics
 --------------
 

@@ -36,7 +36,7 @@ simulation_time = 3600;   % Total simulation time in seconds (1 hour)
 age    = 18;      % Age in years
 height = 170;     % Height in cm
 weight = 60;      % Weight in kg
-gender = 0;       % Gender (0 = female, 1 = male)
+sex = 0;       % sex (0 = female, 1 = male)
 
 sampling_time = 1;   % Simulation sampling time [s]
 

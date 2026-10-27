@@ -37,10 +37,10 @@ simulator = py.importlib.import_module('python_anesthesia_simulator.simulator');
 age = 18;                           
 height = 170;                       
 weight = 60;                        
-gender = 0;                         
+sex = 0;                         
 sampling_time = 0.1;                
 
-George = simulator.Patient([age, height, weight, gender],...
+George = simulator.Patient([age, height, weight, sex],...
     ts = sampling_time);
 ```
 
@@ -107,8 +107,7 @@ for k=1:1:N_simu
     [uProp_k, uRem_k] = pid_ratio(BIS_k, y_sp, PID_params);
 
     simulation_tuple = George.one_step(u_propo=uProp_k,...
-        u_remi=uRem_k,...
-        noise = false);
+        u_remi=uRem_k);
     simulation_cell = cell(simulation_tuple);
     BIS_k = double(simulation_cell{1});
 

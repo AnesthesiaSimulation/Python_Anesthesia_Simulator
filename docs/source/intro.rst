@@ -33,7 +33,7 @@ Designed for physiological fidelity and user customizability, its core features 
 
 
 * **Realistic monitor behavior**  
-  To assess controller robustness, the simulator includes a model of BIS calculation delay, dependent on the Signal Quality Index (SQI) (see :ref:`delay` for details), and realistic measurement noise, mimicking artifacts from real-world clinical monitors.
+  To assess controller robustness, the simulator includes a model of BIS calculation delay, dependent on the Signal Quality Index (SQI) (see :ref:`delay`), and realistic measurement noise (see :ref:`noise_identif`), mimicking artifacts from real-world clinical monitors.
 
 * **Clinically relevant disturbances**  
   A library of surgical stimulation profiles and a novel, physiologically-grounded blood loss model are included.  

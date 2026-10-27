@@ -6,10 +6,12 @@ def standard_alarm(
         thresholds: dict = None,
         delay: dict = None
 ) -> pd.DataFrame:
-    """This function simulate the generation of alarm by standard clinical monitors.
+    """
+    This function simulate the generation of alarm by standard clinical monitors.
 
     Threshold and delay to trigger the alarms are parametrable. Only BIS, HR and MAP are currently implemented by default.
-    Alarm on other signal can be 
+    Alarm on other signal can be implemented using the threshold and delay dictionnary.
+
     Parameters
     ----------
     dataframe : pd.DataFrame

@@ -65,11 +65,11 @@ pyenv('Version', 'C:\path\to\your_environment\Scripts\python.exe');
 simulator = py.importlib.import_module('python_anesthesia_simulator.simulator');
 
 % Define patient parameters
-age = 18; height = 170; weight = 60; gender = 0; % 0=female, 1=male
+age = 18; height = 170; weight = 60; sex = 0; % 0=female, 1=male
 sampling_time = 1;
 
 % Create a Patient object
-George = simulator.Patient([age, height, weight, gender], ts=sampling_time);
+George = simulator.Patient([age, height, weight, sex], ts=sampling_time);
 
 ```
 
@@ -89,10 +89,10 @@ This section shows how to integrate the simulator for real-time co-simulation.
 Save this function in your MATLAB path:
 
 ```matlab
-function [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight,gender,sampling_time)
+function [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight,sex,sampling_time)
 % callPython  Interface between Simulink and the Python Anesthesia Simulator.
 %
-%   [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight,gender,sampling_time)
+%   [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight,sex,sampling_time)
 %   performs one simulation step of the Python patient model.
 %
 %   Inputs:
@@ -100,7 +100,7 @@ function [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight
 %       u_r  - Remifentanil infusion rate [µg/s]
 %       u_n  - Noradrenaline infusion rate [µg/s]
 %       u_a  - Atracurium infusion rate [mg/s]
-%       age, height, weight, gender - patient parameters
+%       age, height, weight, sex - patient parameters
 %       sampling_time - simulation sampling period [s]
 %
 %   Outputs:
@@ -119,7 +119,7 @@ function [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight
     % Initialize Python environment and patient once
     if isempty(simulator)
         simulator = py.importlib.import_module('python_anesthesia_simulator.simulator');
-        George = simulator.Patient([age, height, weight, gender], ts=sampling_time);
+        George = simulator.Patient([age, height, weight, sex], ts=sampling_time);
     end
 
     % Run one simulation step
@@ -127,8 +127,7 @@ function [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight
         u_propo=u_p, ...
         u_remi=u_r, ...
         u_nore=u_n, ...
-        u_atra=u_a, ...
-        noise=false);
+        u_atra=u_a);
 
     % Convert Python outputs to MATLAB doubles
     simulation_cell = cell(simulation_tuple);
@@ -147,7 +146,7 @@ end
 This function is called from within your **Simulink MATLAB Function block**.
 
 ```matlab
-function [bis, co, map, tol, nmb] = PythonStep(u_p,u_r,u_n,u_a,age,height,weight,gender,sampling_time)
+function [bis, co, map, tol, nmb] = PythonStep(u_p,u_r,u_n,u_a,age,height,weight,sex,sampling_time)
 % PythonStep  Simulink-compatible wrapper for Python anesthesia simulator
 %
 % This function acts as a bridge between Simulink and the Python patient model.
@@ -166,7 +165,7 @@ function [bis, co, map, tol, nmb] = PythonStep(u_p,u_r,u_n,u_a,age,height,weight
     nmb = 0;
 
     % Call Python through the MATLAB wrapper
-    [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight,gender,sampling_time);
+    [bis, co, map, tol, nmb] = callPython(u_p,u_r,u_n,u_a,age,height,weight,sex,sampling_time);
 end
 ```
 
@@ -177,7 +176,7 @@ end
 1. Add a **MATLAB Function Block** to your Simulink model.  
 2. Replace its code with the content of `PythonStep.m`.  
 3. Add the Inputs and Outputs:  
-   * Inputs: `u_p`, `u_r`, `u_n`, `u_a`, `age`, `height`, `weight`, `gender`, `sampling_time`  
+   * Inputs: `u_p`, `u_r`, `u_n`, `u_a`, `age`, `height`, `weight`, `sex`, `sampling_time`  
    * Outputs: `bis`, `co`, `map`, `tol`, `nmb`
 4. Connect your infusion control signals and monitoring scopes as needed.  
 5. Open **Simulation Settings → Solver**:

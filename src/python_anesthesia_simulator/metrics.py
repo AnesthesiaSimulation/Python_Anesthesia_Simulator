@@ -119,7 +119,7 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
         # Maintenance phase
         # find start step index
         index_start = np.where(np.array(time) == start_step)[0][0] + 1
-        index_end = np.where(np.array(time) == end_step)[0][0] + 1
+        index_end = np.where(np.array(time) == end_step)[0][0]
         BIS_NADIRp = min(bis[index_start:index_end])
         BIS_NADIRn = max(bis[index_end:])
         TTp, TTn = np.nan, np.nan
@@ -169,9 +169,7 @@ def intergal_absolut_error(time: list, bis: list, bis_target: float = 50):
 
 
 def new_metrics_induction(time: np.ndarray, bis: np.ndarray):
-    """Compute new metrics for induction of closed loop anesthesia.
-
-    This function compute new metrics for closed loop anesthesia.
+    """This function compute the metrics proposed in [Aubouin2024]_ for closed-loop anesthesia.
 
     Parameters
     ----------
@@ -190,6 +188,13 @@ def new_metrics_induction(time: np.ndarray, bis: np.ndarray):
         - **Low BIS time** (*float*): Time passed with BIS < 40 (seconds).
         - **Lowest BIS** (*float*): Lowest BIS value.
         - **Settling time** (*float*): Time to reach BIS < 60 and stay within [40, 60] (minutes).
+
+    References
+    ----------
+    .. [Aubouin2024] B. Aubouin–Pairault, M. Fiacchini, and T. Dang, “Online identification
+            of pharmacodynamic parameters for closed-loop anesthesia with model predictive control,”
+            Computers & Chemical Engineering, vol. 191, p. 108837, Dec. 2024,
+            doi: 10.1016/j.compchemeng.2024.108837.
 
     """
     results = {}

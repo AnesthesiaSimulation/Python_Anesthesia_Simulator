@@ -482,8 +482,8 @@ class CompartmentModel:
                 v1 = 8.840
                 cl1 = 59.6 / 30  # suppose SAPS II = 30 ()
 
-                w_v1 = 1.63
-                w_cl1 = 0.974
+                w_v1 = np.sqrt(np.log(1+1.63/v1**2))
+                w_cl1 = np.sqrt(np.log(1+0.974/cl1**2))
             elif self.model == 'Oualha':
                 # see M. Oualha et al., “Population pharmacokinetics and haemodynamic effects of norepinephrine
                 # in hypotensive critically ill children,” British Journal of Clinical Pharmacology,
@@ -883,7 +883,7 @@ class AtracuriumModel:
         Patient_characteristic = [age (yr), height(cm), weight(kg), sex(0: female, 1: male)]
     model : str, optional
         "WardWeatherleyLago"[Ward1983,Weatherley1983,Lago1998]_.
-        The default is "WardWeatherleyLago".    
+        The default is "WardWeatherleyLago".
     model_params : dict, optional
         For "WardWeatherleyLago":
 
@@ -895,7 +895,7 @@ class AtracuriumModel:
         - **'ke0'**: Transfer rate of the first effect-site compartment (1/min)
         - **'tau'**: Time constant of the second effect-site compartment (min)
 
-        If it is not provided average values are used.    
+        If it is not provided average values are used.
     ts : float, optional
         Sampling time, in s. The default is 1.
     x0 : np.ndarray, optional
@@ -905,7 +905,7 @@ class AtracuriumModel:
     Attributes
     ----------
     ts : float
-        Sampling time, in s.    
+        Sampling time, in s.
     continuous_sys : control.StateSpace
         Continuous state space model.
     discrete_sys : control.StateSpace
@@ -919,7 +919,7 @@ class AtracuriumModel:
     ----------
     .. [Ward1983] S. Ward et al., "Pharmacokinetics of Atracurium Besylate in Healty Patients (after a single i.v. bolus dose),"
             British Journal of Anesthesia, vol. 55, no. 2, pp. 113-116, Feb. 1983, doi: 10.1093/bja/55.2.113.
-    .. [Weatherley1983] B. Weatherley et al., "Pharmacokinetics, Pharmacodynamics and Dose-Response Relationship of Atracurium Administered i.v." 
+    .. [Weatherley1983] B. Weatherley et al., "Pharmacokinetics, Pharmacodynamics and Dose-Response Relationship of Atracurium Administered i.v."
             British Journal of Anesthesia, vol. 55, Suppl. 1, pp. 39S-45S, Jan. 1983.
     .. [Lago1998] P. Lago et al., "On-Line Autocalibration of a PID Controller of Neuromuscular Blockade"
             Proceedings of the 1998 IEEE International Conference on Control Applications (Cat. No.98CH36104), Trieste, Italy, Vol. 1, pp. 363-367, Sept. 1998, doi: 10.1109/CCA.1998.728448.
@@ -927,10 +927,12 @@ class AtracuriumModel:
 
     def __init__(self, Patient_characteristic: list,
                  model: str = None,
-                 model_params: dict = {},
+                 model_params: dict = None,
                  ts: float = 1,
                  x0: np.ndarray = None):
         """Init the class."""
+        if model_params is None:
+            model_params = {}
         self.ts = ts
         weight = Patient_characteristic[2]
         self.model = model
@@ -1068,12 +1070,12 @@ class AtracuriumModel:
         return (self.continuous_sys.C @ np.linalg.inv(-self.continuous_sys.A) @ self.continuous_sys.B + self.continuous_sys.D)[0, 0]
 
     def initialize_state(self, x0: np.ndarray):
-        """ Initialize the state vector 
+        """ Initialize the state vector
 
         Parameters
         ----------
         x0 : numpy array
-            Initial state vector. 
+            Initial state vector.
 
         """
 
