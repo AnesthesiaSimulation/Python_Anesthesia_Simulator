@@ -12,8 +12,9 @@ from scipy.stats import truncnorm
 class CompartmentModel:
     """PKmodel class modelize the PK model of propofol, remifentanil or norepinephrine drug. Simulate the drug distribution in the body.
 
-    Use a 6 compartement model for propofol, a 5 compartement model for remifentanil
+    Use a 4 compartement model for propofol and remifentanil
     and a 1 compartement model for norepinephrine.
+
     The model is a LTI model with the form:
 
     .. math::  x(k+1)= Ax(k) + Bu(k)
@@ -21,8 +22,7 @@ class CompartmentModel:
 
     The state vector is the concentration of the drug in each compartement in the following order:
 
-    * blood, muscles, fat, BIS effect-site, MAP effect-site 1, MAP effect-site 2 for propofol;
-    * blood, muscles, fat, BIS effect-site, MAP effect-site 1 for remifentanil;
+    * blood, muscles, fat, BIS effect-site for propofol and Remifentanil;
     * blood for norepinephrine;
 
     The output of the model is:
@@ -33,16 +33,17 @@ class CompartmentModel:
     Parameters
     ----------
     Patient_characteristic: list
-        Patient_characteristic = [age (yr), height(cm), weight(kg), gender(0: female, 1: male)]
+        Patient_characteristic = [age (yr), height(cm), weight(kg), sex(0: female, 1: male)]
     lbm : float
         lean body mass index.
     drug : str
-        can be "Propofol", "Remifentanil" or "Norepinephrine".
+        can be "Propofol", "Remifentanil", "Norepinephrine", or "Rocuronium".
     model : str, optional
         Could be "Schnider"[Schnider1999]_, "Marsh_initial"[Marsh1991]_, "Marsh_modified"[Struys2000]_,
         "Shuttler"[Schuttler2000]_ or "Eleveld"[Eleveld2018]_ for Propofol.
         "Minto"[Minto1997]_, or "Eleveld"[Eleveld2017]_ for Remifentanil.
         "Beloeil"[Beloeil2005]_, "Oualha"[Oualha2014]_, or "Li"[Li2024]_ for Norepinephrine.
+        "Keijn"[Kleijn2011]_ for Rocuronium.
         The default is "Schnider" for Propofol, "Minto" for Remifentanil, and "Beloeil" for Norepinephrine.
     ts : float, optional
         Sampling time, in s. The default is 1.
@@ -113,6 +114,10 @@ class CompartmentModel:
     .. [Li2024] Y. Li et al., “Population Pharmacokinetic Modelling of Norepinephrine
             in Healthy Volunteers Prior to and During General Anesthesia,” Clin Pharmacokinet,
             vol. 63, no. 11, pp. 1597–1608, Nov. 2024, doi: 10.1007/s40262-024-01430-y.
+    .. [Kleijn2011] Kleijn, H.J., Zollinger, D.P., van den Heuvel, M.W. and Kerbusch, T. (2011),
+            Population pharmacokinetic–pharmacodynamic analysis for sugammadex-mediated reversal of
+            rocuronium-induced neuromuscular blockade. British Journal of Clinical Pharmacology,
+            72: 415-433. 10.1111/j.1365-2125.2011.04000.x
 
     """
 
@@ -131,7 +136,7 @@ class CompartmentModel:
         age = Patient_characteristic[0]
         height = Patient_characteristic[1]
         weight = Patient_characteristic[2]
-        gender = Patient_characteristic[3]
+        sex = Patient_characteristic[3]
         self.u_endo = 0  # endogenous production of drug (used for Norepinephrine)
         self.u_lag = 0  # lag in seconds
         self.model = model
@@ -304,7 +309,7 @@ class CompartmentModel:
                 fCLmat_ref = fsig(PMA_ref*52, theta[8], theta[9])
                 fQ3mat = fsig(PMA * 52, theta[14], 1)
                 fQ3mat_ref = fsig(PMA_ref * 52, theta[14], 1)
-                fsal = fal_sallami(gender, weight, age, BMI)
+                fsal = fal_sallami(sex, weight, age, BMI)
                 fsal_ref = fal_sallami(GDR_ref, WGT_ref, AGE_ref, BMI_ref)
 
                 if opiate:
@@ -321,7 +326,7 @@ class CompartmentModel:
                 v2ref = theta[2]
                 v3 = theta[3] * fsal/fsal_ref * fopiate(theta[13])
                 v3ref = theta[3]
-                cl1 = (gender*theta[4] + (1-gender)*theta[15]) * (weight/WGT_ref)**0.75 * \
+                cl1 = (sex*theta[4] + (1-sex)*theta[15]) * (weight/WGT_ref)**0.75 * \
                     fCLmat/fCLmat_ref * fopiate(theta[11])
 
                 cl2 = theta[5]*(v2/v2ref)**0.75 * (1 + theta[16] * (1 - fQ3mat))
@@ -413,7 +418,7 @@ class CompartmentModel:
 
                 BMI = weight/(height/100)**2
 
-                SIZE = (fal_sallami(gender, weight, age, BMI)/fal_sallami(GDR_ref, WGT_ref, AGE_ref, BMI_ref))
+                SIZE = (fal_sallami(sex, weight, age, BMI)/fal_sallami(GDR_ref, WGT_ref, AGE_ref, BMI_ref))
 
                 theta = [None,      # Juste to have the same index as in the paper
                          2.88,
@@ -425,7 +430,7 @@ class CompartmentModel:
 
                 KMAT = fsig(weight, theta[1], 2)
                 KMATref = fsig(WGT_ref, theta[1], 2)
-                if gender:
+                if sex:
                     KSEX = 1
                 else:
                     KSEX = 1+theta[5]*fsig(age, 12, 6)*(1-fsig(age, 45, 6))
@@ -501,11 +506,78 @@ class CompartmentModel:
                 w_prop_effect = np.sqrt(np.log(1+(266.2/100)**2))
                 w_u_endo = np.sqrt(np.log(1+(30.4/100)**2))
 
-        if drug == 'Propofol':
+        elif drug == 'Rocuronium':
+            if self.model is None:
+                self.model = 'Wierda'  # set defaut value
+
+            # see Masui, Kenichi, Sayaka Ishigaki, Atsuko Tomita, et Hiroshi Otake. « Rocuronium Pharmacodynamic
+            # Models for Published Five Pharmacokinetic Models: Age and Sex Are Covariates in Pharmacodynamic
+            # Models ». Journal of Anesthesia 32, nᵒ 5 (2018): 709‑16. https://doi.org/10.1007/s00540-018-2543-3.
+            # for a table with all the model coefficient
+
+            if self.model == 'Wierda':
+                v1 = 0.044 * weight  # [l]
+                cl1 = 0.1 * v1     # [l/min]
+                cl2 = 0.21 * v1    # [l/min]
+                cl3 = 0.028 * v1   # [l/min]
+                v2 = cl2 / 0.13 # [l]
+                v3 = cl3 / 0.01 # [l]
+
+                ke0 = 0.1 - (age - 50)*0.00138 # [1/min]
+                w_ke0 = np.sqrt(np.log(1 + 0.282**2))
+
+            elif self.model == 'Szenohradszky':
+                v1 = 0.0769 * weight    # [l]
+                cl1 = 0.0376 * v1   # [l/min]
+                cl2 = 0.1143 * v1   # [l/min]
+                cl3 = 0.0196 * v1   # [l/min]
+                v2 = cl2 / 0.1748   # [l]
+                v3 = cl3 / 0.0189   # [l]
+
+                ke0 = 0.247 - (age - 50)* 0.00343 # [1/min]
+                w_ke0 = np.sqrt(np.log(1 + 0.292**2))
+                
+            elif self.model == 'Cooper':
+                v1 = 0.0385 * weight    # [l]
+                cl1 = 0.119 * v1    # [l/min]
+                cl2 = 0.259 * v1    # [l/min]
+                cl3 = 0.06 * v1     # [l/min]
+                v2 = cl2 / 0.163    # [l]
+                v3 = cl3 / 0.012    # [l]
+
+                ke0 = 0.0820 - (age - 50)*0.00109 # [1/min]
+                w_ke0 = np.sqrt(np.log(1 + 0.27**2))
+
+            elif self.model == 'Alvarez-Gomez':
+                v1 = 0.057 * weight # [l]
+                cl1 = 0.0952 * v1   # [l/min]
+                cl2 = 0.2807 * v1   # [l/min]
+                cl3 = 0.0322 * v1   # [l/min]
+                v2 = cl2 / 0.2149   # [l]
+                v3 = cl3 / 0.0166   # [l]
+
+                ke0 = 0.110 + (age - 50)*0.00158 # [1/min]
+                w_ke0 = np.sqrt(np.log(1 + 0.293**2))
+
+
+            # not given in the paper so estimated at 0% for each variable
+            w_v1 = 0
+            w_v2 = 0
+            w_v3 = 0
+            w_cl1 = 0
+            w_cl2 = 0
+            w_cl3 = 0
+            w_ke0 = 0
+
+
+        if drug == 'Propofol' or drug=="Rocuronium" or drug=="Remifentanil":
             if random:
                 if self.model == 'Marsh':
                     print("Warning: the standard deviation of the Marsh model are not know," +
                           " it is set to 100% for each variable")
+                if self.drug == "Rocuronium":
+                    print("Warning: the standard deviation of the Rocuronium PK are not know," +
+                          " it is set to 0% for each variable, except keO which have a coherent value")
                 if truncated is not None:
                     v1 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_v1))
                     v2 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_v2))
@@ -539,41 +611,7 @@ class CompartmentModel:
             C = np.array([[0, 0, 0, 1]])
             D = np.array([[0]])
 
-        elif drug == 'Remifentanil':
-            if random:
-                if truncated is not None:
-                    v1 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_v1))
-                    v2 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_v2))
-                    v3 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_v3))
-                    cl1 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_cl1))
-                    cl2 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_cl2))
-                    cl3 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_cl3))
-                    ke0 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_ke0))
-                else:
-                    v1 *= np.exp(np.random.normal(scale=w_v1))
-                    v2 *= np.exp(np.random.normal(scale=w_v2))
-                    v3 *= np.exp(np.random.normal(scale=w_v3))
-                    cl1 *= np.exp(np.random.normal(scale=w_cl1))
-                    cl2 *= np.exp(np.random.normal(scale=w_cl2))
-                    cl3 *= np.exp(np.random.normal(scale=w_cl3))
-                    ke0 *= np.exp(np.random.normal(scale=w_ke0))
 
-            # drug amount transfer rates [1/min]
-            k10 = cl1 / v1
-            k12 = cl2 / v1
-            k13 = cl3 / v1
-            k21 = cl2 / v2
-            k31 = cl3 / v3
-
-            # Matrices system definition
-            A = np.array([[-(k10 + k12 + k13), k12, k13, 0],
-                          [k21, -k21, 0, 0],
-                          [k31, 0, -k31, 0],
-                          [ke0, 0, 0, -ke0]])/60  # 1/s
-
-            B = np.transpose(np.array([[1/v1, 0, 0, 0]]))  # 1/L
-            C = np.array([[0, 0, 0, 1]])
-            D = np.array([[0]])
 
         elif drug == 'Norepinephrine':
             if random:
@@ -650,12 +688,12 @@ class CompartmentModel:
         Parameters
         ----------
         u : float
-            Infusion rate (mg/s for Propofol, µg/s for Remifentanil and Norepinephrine).
+            Infusion rate (mg/s for Propofol and Rocuronium, µg/s for Remifentanil and Norepinephrine).
 
         Returns
         -------
         numpy array
-            Actual effect site concentration (µg/mL for Propofol and ng/mL
+            Actual effect site concentration (µg/mL for Propofol and Rocuronium, ng/mL
             for Remifentanil and Norepinephrine).
 
         """
@@ -830,7 +868,7 @@ class AtracuriumModel:
     Parameters
     ----------
     Patient_characteristic: list
-        Patient_characteristic = [age (yr), height(cm), weight(kg), gender(0: female, 1: male)]
+        Patient_characteristic = [age (yr), height(cm), weight(kg), sex(0: female, 1: male)]
     model : str, optional
         "WardWeatherleyLago"[Ward1983,Weatherley1983,Lago1998]_.
         The default is "WardWeatherleyLago".    
