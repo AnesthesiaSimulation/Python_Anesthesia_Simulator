@@ -60,10 +60,6 @@ if __name__ == '__main__':
     plt.ylabel('TOF ratio (%) ')
     plt.xlabel('Time (min)')
     plt.show()
-    for model in model_list:
-        plt.plot(dataframe_final[f'TOF_{model}'] >= dataframe_final[f'TOF_{model}'].iloc[100*6+1])
-        plt.title(model)
-        plt.show()
 
     rocuronium_pk_coehrence()
     rocuronium_pd_coehrence()
