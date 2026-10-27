@@ -587,7 +587,7 @@ class CompartmentModel:
                 if self.model == 'Marsh':
                     print("Warning: the standard deviation of the Marsh model are not know," +
                           " it is set to 100% for each variable")
-                if self.drug == "Rocuronium":
+                if drug == "Rocuronium":
                     print("Warning: the standard deviation of the Rocuronium PK are not know," +
                           " it is set to 0% for each variable, except keO which have a coherent value")
                 if truncated is not None:
