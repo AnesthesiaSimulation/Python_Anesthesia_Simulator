@@ -43,8 +43,8 @@ class CompartmentModel:
         "Shuttler"[Schuttler2000]_ or "Eleveld"[Eleveld2018]_ for Propofol.
         "Minto"[Minto1997]_, or "Eleveld"[Eleveld2017]_ for Remifentanil.
         "Beloeil"[Beloeil2005]_, "Oualha"[Oualha2014]_, or "Li"[Li2024]_ for Norepinephrine.
-        "Keijn"[Kleijn2011]_ for Rocuronium.
-        The default is "Schnider" for Propofol, "Minto" for Remifentanil, and "Beloeil" for Norepinephrine.
+        "Wierda"[Wierda1991]_, "Szenohradszky"[Szenohradszky1992]_, "Cooper"[Cooper1993]_, or "Alvarez-Gomez"[Alvarez-Gomez1994]_  for Rocuronium.
+        The default is "Schnider" for Propofol, "Minto" for Remifentanil, "Beloeil" for Norepinephrine, and "Wierda" for Rocuronium.
     ts : float, optional
         Sampling time, in s. The default is 1.
     random : bool, optional
@@ -65,7 +65,7 @@ class CompartmentModel:
     ts : float
         Sampling time, in s.
     drug : str
-        can be "Propofol", "Remifentanil" or "Norepinephrine".
+        can be "Propofol", "Remifentanil", "Norepinephrine", or "Rocuronium".
     A_init : np.ndarray
         Initial value of the matrix A.
     B_init : np.ndarray
@@ -114,10 +114,22 @@ class CompartmentModel:
     .. [Li2024] Y. Li et al., “Population Pharmacokinetic Modelling of Norepinephrine
             in Healthy Volunteers Prior to and During General Anesthesia,” Clin Pharmacokinet,
             vol. 63, no. 11, pp. 1597–1608, Nov. 2024, doi: 10.1007/s40262-024-01430-y.
-    .. [Kleijn2011] Kleijn, H.J., Zollinger, D.P., van den Heuvel, M.W. and Kerbusch, T. (2011),
-            Population pharmacokinetic–pharmacodynamic analysis for sugammadex-mediated reversal of
-            rocuronium-induced neuromuscular blockade. British Journal of Clinical Pharmacology,
-            72: 415-433. 10.1111/j.1365-2125.2011.04000.x
+    .. [Alvarez-Gomez1994] Alvarez-Gomez, J. A., M. E. Estelles, J. Fabregat, F. Perez, and A. J. Brugger.
+            « Pharmacokinetics and Pharmacodynamics of Rocuronium Bromide in Adult Patients ». European
+            Journal of Anaesthesiology Supplement 9 (janvier 1994): 53‑56.
+    .. [Cooper1993] Cooper, R. A., V. R. Maddineni, R. K. Mirakhur, J. M. K. H. Wierda, M. Brady,
+            and K. T. J. Fitzpatrick. « Time course of neuromuscular effect and pharmacokinetics of rocuronium
+            bromide (ORG 9426) during isoglurane anaesthesia in patient with and without renal failure. »
+            British Journal of Anaesthesia 71, nᵒ 2 (1993): 222‑26. doi: 10.1093/bja/71.2.222.
+    .. [Szenohradszky1992] Szenohradszky, Janos, Dennis M. Fisher, Veronica Segredo, et al.
+            « Pharmacokinetics of Rocuronium Bromide (ORG 9426) in Patients with Normal Renal Function
+            or Patients Undergoing Cadaver Renal Transplantation. » Anesthesiology 77, nᵒ 5 (1992).
+            doi: 10.1097/00000542-199211000-00010.
+    .. [Wierda1991] Wierda, J. Mark K. H., Ursula W. Kleef, Ludwina M. Lambalk, Wybe D. Kloppenburg,
+            and Sandor Agoston. « The Pharmacodynamics and Pharmacokinetics of Org 9426, a New Non-Depolarizing
+            Neuromuscular Blocking Agent, in Patients Anaesthetized with Nitrous Oxide, Halothane and Fentanyl ».
+            Canadian Journal of Anaesthesia 38, nᵒ 4 (1991): 430‑35. doi: 10.1007/BF03007578.
+
 
     """
 

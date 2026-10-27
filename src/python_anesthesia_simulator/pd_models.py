@@ -1569,7 +1569,8 @@ class TOF_model:
         should be 'Atracurium' or 'Rocuronium', default is 'Rocuronium'.
     hill_model : str, optional
         'Weatherley' [Weatherley1983]_ for Atracurium
-        'Wierda', 'Szenohradszky', 'Cooper', or 'Alvarez-Gomez' for Rocuronium   
+        'Wierda', 'Szenohradszky', 'Cooper', or 'Alvarez-Gomez' for Rocuronium 
+        Coeffificent for Rocuronium model all come from [Masui2018]_.  
         Ignored if hill_param is specified.
         Default is 'Weatherley' for Atracurium and 'Wierda' for Rocuronium.
     hill_param : dict, optional
@@ -1600,8 +1601,12 @@ class TOF_model:
 
     References
     ----------
-    .. [Weatherley1983] B. Weatherley et al., "Pharmacokinetics, Pharmacodynamics and Dose-Response Relationship of Atracurium Administered i.v." 
-            British Journal of Anesthesia, vol. 55, Suppl. 1, pp. 39S-45S, Jan. 1983.
+    .. [Weatherley1983] B. Weatherley et al., "Pharmacokinetics, Pharmacodynamics and Dose-Response Relationship of
+            Atracurium Administered i.v." British Journal of Anesthesia, vol. 55, Suppl. 1, pp. 39S-45S, Jan. 1983.
+    .. [Masui2018] Masui, Kenichi, Sayaka Ishigaki, Atsuko Tomita, and Hiroshi Otake. ‘Rocuronium Pharmacodynamic Models
+            for Published Five Pharmacokinetic Models: Age and Sex Are Covariates in Pharmacodynamic Models’.
+            Journal of Anesthesia 32, no. 5 (2018): 709–16. https://doi.org/10.1007/s00540-018-2543-3.
+
 
     """
 
