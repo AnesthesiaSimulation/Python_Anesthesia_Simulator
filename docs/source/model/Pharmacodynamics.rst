@@ -16,7 +16,7 @@ where :math:`E(t)` is the effect of the drug at time :math:`t`, :math:`E_{max}` 
    :align: center
    :alt: Sigmoid function
 
-For propofol, remifentanil and atracurium [Weatherley1983]_, before applying the Hill function, an effect-site compartment is added to the PK model to represent a delay between a rise of drug concentration in blood and the occurrence of the effect. This delay is dependent on the physiological variables, and thus, multiple effect-site compartments can be added to the model. As those compartments are virtual, the drug transfer is considered in only one direction, from blood to the effect site without affecting the blood compartment concentration. Thus, the addition of the effect site does not affect the PK model. The equation for one effect-site compartment is given by:
+For propofol, remifentanil rocuronium and atracurium [Weatherley1983]_, before applying the Hill function, an effect-site compartment is added to the PK model to represent a delay between a rise of drug concentration in blood and the occurrence of the effect. This delay is dependent on the physiological variables, and thus, multiple effect-site compartments can be added to the model. As those compartments are virtual, the drug transfer is considered in only one direction, from blood to the effect site without affecting the blood compartment concentration. Thus, the addition of the effect site does not affect the PK model. The equation for one effect-site compartment is given by:
 
 .. math::
 
@@ -29,7 +29,7 @@ where :math:`x_{es}(t)` is the drug concentration in the effect site, :math:`x_1
    :align: center
    :alt: Four-compartment model
 
-   Four-compartment model for propofol and remifentanil.
+   Four-compartment model for propofol, remifentanil and rocuronium.
    
 For atracurium, before applying the Hill function, a second effect-site compartment have been added to better fit experimental data [Lago1998]_. The equation for the second effect-site compartment is given by:    
 
@@ -143,8 +143,8 @@ In this simulator, the values of the parameters of the surface model are taken f
 
 Neuromuscular blockade level
 -----------------------------
-The neuromuscular blockade level is provided by the train-of-four (TOF) monitor and it is expressed as the percentage of the first twitch (T1) magnitude relative to its baseline value (T0), which is measured before administering atracurium.
-A 2D-Hill function is used to express the atracurium effect on TOF [Weatherley1983]_:
+The neuromuscular blockade level is provided by the train-of-four (TOF) monitor and it is expressed as the percentage of the first twitch (T1) magnitude relative to its baseline value (T0), which is measured before administering atracurium or rocuronium.
+A Hill function is used to express the effect of atracuritum or rocuronium on TOF (respectively from [Weatherley1983]_ and [Masui2018]_) :
 
 .. math::
 
@@ -285,7 +285,7 @@ The overall model of anesthesia process is given by connecting the PK model and 
 
 
 
-The following table summarizes the effect of single drugs injection on the model outputs:
+The following table summarizes the effect of single drug injection on the model outputs:
 
 .. raw:: html
 
@@ -315,7 +315,7 @@ The following table summarizes the effect of single drugs injection on the model
           <th>Propofol</th>
           <th>Remifentanil</th>
           <th>Norepinephrine</th>
-          <th>Atracurium</th>
+          <th>Atracurium /<br>Rocuronium</th>
         </tr>
       </thead>
       <tbody>
@@ -373,7 +373,7 @@ The following table summarizes the effect of single drugs injection on the model
           <td>No effect</td>
           <td>No effect</td>
           <td>No effect</td>
-          <td class="red-bg">+</td>
+          <td class="blue-bg">-</td>
         </tr>
       </tbody>
     </table>
@@ -423,4 +423,7 @@ References
 .. [Weatherley1983] B. Weatherley et al., "Pharmacokinetics, Pharmacodynamics and Dose-Response Relationship of Atracurium Administered i.v." 
         British Journal of Anesthesia, vol. 55, Suppl. 1, pp. 39S-45S, Jan. 1983. 
 .. [Lago1998] P. Lago et al., "On-Line Autocalibration of a PID Controller of Neuromuscular Blockade"
-        Proceedings of the 1998 IEEE International Conference on Control Applications (Cat. No.98CH36104), Trieste, Italy, Vol. 1, pp. 363-367, Sept. 1998, doi: 10.1109/CCA.1998.728448.          
+        Proceedings of the 1998 IEEE International Conference on Control Applications (Cat. No.98CH36104), Trieste, Italy, Vol. 1, pp. 363-367, Sept. 1998, doi: 10.1109/CCA.1998.728448.
+.. [Masui2018] Masui, Kenichi, Sayaka Ishigaki, Atsuko Tomita, and Hiroshi Otake. ‘Rocuronium Pharmacodynamic Models
+        for Published Five Pharmacokinetic Models: Age and Sex Are Covariates in Pharmacodynamic Models’.
+        Journal of Anesthesia 32, no. 5 (2018): 709–16. https://doi.org/10.1007/s00540-018-2543-3.      

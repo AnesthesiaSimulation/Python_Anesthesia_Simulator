@@ -6,16 +6,16 @@ Pharmacokinetics
 The most common approach for modeling pharmacokinetics is based on compartmental models. The concept is to consider the body as one or several compartments and describe the drug concentration in each compartment [Bailey2005]_. The drug is assumed to be homogeneously distributed in each compartment, and the transport rate between compartments is assumed to be proportional to the drug concentration. Although this is a crude simplification of reality, it is a powerful tool for the prediction of the drug concentration in the body. Moreover, the freedom of the number of compartments allows to reach a good compromise between accuracy and complexity depending on available data.
 
 .. figure:: ../images/3_comportment_model.png
-   :alt: Three-compartment model for propofol and remifentanil.
+   :alt: Three-compartment model for propofol, remifentanil and rocuronium.
    :align: center
    :width: 70%
 
    Three-compartment model for propofol and remifentanil.
 
-Propofol and remifenantil
--------------------------
+Propofol, remifenantil and rocuronium
+-------------------------------------
 
-For propofol and remifentanil, a three-compartment model is commonly used, see the figure above. The first compartment is the central compartment, which represents blood and highly perfused organs such as the heart, brain, kidney and liver. Then the two peripherical compartments respectively represent the highly perfused tissues such as muscles, and the poorly perfused tissues such as fat. The model results in a dynamical system described by the following state-space representation:
+For propofol, remifentanil, and rocuronium a three-compartment model is commonly used, see the figure above. The first compartment is the central compartment, which represents blood and highly perfused organs such as the heart, brain, kidney and liver. Then the two peripherical compartments respectively represent the highly perfused tissues such as muscles, and the poorly perfused tissues such as fat. The model results in a dynamical system described by the following state-space representation:
 
 .. math::
 
@@ -37,7 +37,7 @@ For propofol and remifentanil, a three-compartment model is commonly used, see t
     \end{pmatrix}
     u(t)
 
-where :math:`x_1(t), x_2(t)` and :math:`x_3(t)` respectively represent drug concentration in blood, muscle and fat in :math:`\mathrm{mg/ml}` for propofol and :math:`\mathrm{µg/ml}` for remifentanil. The coefficients can be obtained from the equations below, all in :math:`\mathrm{1/s}`:
+where :math:`x_1(t), x_2(t)` and :math:`x_3(t)` respectively represent drug concentration in blood, muscle and fat in :math:`\mathrm{mg/ml}` for propofol and rocuronium and :math:`\mathrm{µg/ml}` for remifentanil. The coefficients can be obtained from the equations below, all in :math:`\mathrm{1/s}`:
 
 .. math::
 
@@ -47,13 +47,13 @@ where :math:`x_1(t), x_2(t)` and :math:`x_3(t)` respectively represent drug conc
     k_{21} = \frac{Cl_2}{V_2},\quad
     k_{31} = \frac{Cl_3}{V_3}
 
-where :math:`V_i` and :math:`Cl_i` for :math:`i \in \{1,2,3\}` are, respectively, the volumes and the clearance rates of each compartment. The input :math:`u(t)` is the drug infusion rate in :math:`\mathrm{mg/s}` for propofol and :math:`\mathrm{µg/s}` for remifentanil.
+where :math:`V_i` and :math:`Cl_i` for :math:`i \in \{1,2,3\}` are, respectively, the volumes and the clearance rates of each compartment. The input :math:`u(t)` is the drug infusion rate in :math:`\mathrm{mg/s}` for propofol and rocuronium and :math:`\mathrm{µg/s}` for remifentanil.
 
-Multiple studies have been conducted to estimate the parameters of the PK model for propofol and remifentanil depending on the patient's characteristics (age, height, weight, and sex). The most commonly used in clinical practice are the models of [Scnnider1999]_ and [Marsh1991]_ for propofol, and the model of [Minto1997]_ for remifentanil. However, two more recent studies made by Eleveld et al. ([Eleveld2018]_, [Eleveld2017]_) respectively for propofol and remifentanil, gather much more data and could be considered as the state of the art.
+Multiple studies have been conducted to estimate the parameters of the PK model for propofol, remifentanil and rocuronium depending on the patient's characteristics (age, height, weight, and sex). The most commonly used in clinical practice are the models of [Scnnider1999]_ and [Marsh1991]_ for propofol, and the model of [Minto1997]_ for remifentanil. However, two more recent studies made by Eleveld et al. ([Eleveld2018]_, [Eleveld2017]_) respectively for propofol and remifentanil, gather much more data and could be considered as the state of the art. For rocuronium the simulator implement the model proposed in [Wierda1991]_, [Szenohradszky1992]_, [Cooper1993]_, and [Alvarez-Gomez1994]_.
 
 
 .. figure:: ../images/propofol_concentration.png
-   :alt: Three-compartment model for propofol and remifentanil.
+   :alt:  Simulated propofol concentration for a 3-compartment model
    :align: center
    :width: 70%
 
@@ -228,4 +228,19 @@ References
         in Healthy Volunteers Prior to and During General Anesthesia,” Clin Pharmacokinet,
         vol. 63, no. 11, pp. 1597–1608, Nov. 2024, doi: https://10.1007/s40262-024-01430-y.  
 .. [Ward1983] S. Ward et al., "Pharmacokinetics of Atracurium Besylate in Healty Patients (after a single i.v. bolus dose),"
-        British Journal of Anesthesia, vol. 55, no. 2, pp. 113-116, Feb. 1983, doi: 10.1093/bja/55.2.113.       
+        British Journal of Anesthesia, vol. 55, no. 2, pp. 113-116, Feb. 1983, doi: 10.1093/bja/55.2.113.
+.. [Alvarez-Gomez1994] Alvarez-Gomez, J. A., M. E. Estelles, J. Fabregat, F. Perez, and A. J. Brugger.
+        « Pharmacokinetics and Pharmacodynamics of Rocuronium Bromide in Adult Patients ». European
+        Journal of Anaesthesiology Supplement 9 (janvier 1994): 53‑56.
+.. [Cooper1993] Cooper, R. A., V. R. Maddineni, R. K. Mirakhur, J. M. K. H. Wierda, M. Brady,
+        and K. T. J. Fitzpatrick. « Time course of neuromuscular effect and pharmacokinetics of rocuronium
+        bromide (ORG 9426) during isoglurane anaesthesia in patient with and without renal failure. »
+        British Journal of Anaesthesia 71, nᵒ 2 (1993): 222‑26. doi: 10.1093/bja/71.2.222.
+.. [Szenohradszky1992] Szenohradszky, Janos, Dennis M. Fisher, Veronica Segredo, et al.
+        « Pharmacokinetics of Rocuronium Bromide (ORG 9426) in Patients with Normal Renal Function
+        or Patients Undergoing Cadaver Renal Transplantation. » Anesthesiology 77, nᵒ 5 (1992).
+        doi: 10.1097/00000542-199211000-00010.
+.. [Wierda1991] Wierda, J. Mark K. H., Ursula W. Kleef, Ludwina M. Lambalk, Wybe D. Kloppenburg,
+        and Sandor Agoston. « The Pharmacodynamics and Pharmacokinetics of Org 9426, a New Non-Depolarizing
+        Neuromuscular Blocking Agent, in Patients Anaesthetized with Nitrous Oxide, Halothane and Fentanyl ».
+        Canadian Journal of Anaesthesia 38, nᵒ 4 (1991): 430‑35. doi: 10.1007/BF03007578.    

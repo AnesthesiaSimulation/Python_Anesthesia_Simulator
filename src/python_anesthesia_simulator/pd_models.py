@@ -1448,25 +1448,36 @@ class Hemo_meca_PD_model:
 
 
 class TOF_model:
-    r"""Model to link Atracurium effect site concentration to train-of-four (TOF).
+    r"""Model to link Atracurium or Rocuronium effect site concentration to train-of-four (TOF). The output is the ratio :math:`\frac{T_1}{T_0}` of the responses to the stimuli as a percentage.
 
     The equation is:
 
-    .. math:: TOF = \frac{100*C_{50}^\gamma}{C_{50}^\gamma + C_e^\gamma}
+    .. math:: TOF = E_0 \frac{100*C_{50}^\gamma}{C_{50}^\gamma + C_e^\gamma}
 
     Parameters
     ----------
+    Patient_characteristic : list
+        Patient_characteristic = [age (yr), height(cm), weight(kg), sex(0: female, 1: male)]
+    drug : str, optional
+        should be 'Atracurium' or 'Rocuronium', default is 'Rocuronium'.
     hill_model : str, optional
-        'Weatherley' [Weatherley1983]_       
+        'Weatherley' [Weatherley1983]_ for Atracurium
+        'Wierda', 'Szenohradszky', 'Cooper', or 'Alvarez-Gomez' for Rocuronium 
+        Coeffificent for Rocuronium model all come from [Masui2018]_.  
         Ignored if hill_param is specified.
-        Default is 'Weatherley'.
+        Default is 'Weatherley' for Atracurium and 'Wierda' for Rocuronium.
     hill_param : dict, optional
         Parameters of the model:
 
         - **'c50'**: Half effect concentration (µg/mL).
         - **'gamma'**: Stepness of the Hill curve.
+        - **'E0'**: Initial ratio
 
         If it is not provided default values are used.
+    random: bool, optionnal
+        bool to introduce uncertainties in the model. The default is False.
+
+        
 
 
 
@@ -1476,18 +1487,28 @@ class TOF_model:
         Concentration at half effect for atracurium effect on TOF (µg/mL).
     gamma : float
         slope coefficient for the Hill curve.
+    E0 : float
+        Initial value of the TOF ratio (%).
     hill_model : str
         'Weatherley' [Weatherley1983]_
 
     References
     ----------
-    .. [Weatherley1983] B. Weatherley et al., "Pharmacokinetics, Pharmacodynamics and Dose-Response Relationship of Atracurium Administered i.v." 
-            British Journal of Anesthesia, vol. 55, Suppl. 1, pp. 39S-45S, Jan. 1983.
+    .. [Weatherley1983] B. Weatherley et al., "Pharmacokinetics, Pharmacodynamics and Dose-Response Relationship of
+            Atracurium Administered i.v." British Journal of Anesthesia, vol. 55, Suppl. 1, pp. 39S-45S, Jan. 1983.
+    .. [Masui2018] Masui, Kenichi, Sayaka Ishigaki, Atsuko Tomita, and Hiroshi Otake. ‘Rocuronium Pharmacodynamic Models
+            for Published Five Pharmacokinetic Models: Age and Sex Are Covariates in Pharmacodynamic Models’.
+            Journal of Anesthesia 32, no. 5 (2018): 709–16. https://doi.org/10.1007/s00540-018-2543-3.
+
 
     """
 
-    def __init__(self, hill_model: str = 'Weatherley',
-                 hill_param: Optional[dict] = None):
+    def __init__(self,
+                 Patient_characteristic: list,
+                 drug: str = 'Rocuronium',
+                 hill_model: str = None,
+                 hill_param: Optional[dict] = {},
+                 random: bool = False):
         """
         Init the class.
 
@@ -1496,14 +1517,72 @@ class TOF_model:
         None.
 
         """
-        if hill_param is None:
-            hill_param = {}
+
+        self.drug = drug
+        if hill_model is None and drug == 'Rocuronium':
+            hill_model = 'Wierda'
+        if hill_model is None and drug == 'Rocuronium':
+            hill_model = 'Weatherley'
+
         self.hill_model = hill_model
+        age = Patient_characteristic[0]
+        sex = Patient_characteristic[3]
 
         if self.hill_model == 'Weatherley':
-
             self.C50 = hill_param.get('C50', 0.625)
             self.gamma = hill_param.get('gamma', 4.25)
+            self.E0 = hill_param.get('E0', 100)
+
+            # not known, set to 100%
+            w_C50 = np.sqrt(np.log(2))
+            w_gamma = np.sqrt(np.log(2))
+            w_E0 = np.sqrt(np.log(2))
+
+        elif self.hill_model == 'Wierda':
+            self.C50 = hill_param.get('C50', 1.08 - (age - 50)*0.00605)
+            self.gamma = hill_param.get('gamma', 6.41 - (age - 50)*0.0494 - sex*1.24)
+            self.E0 = hill_param.get('E0', 106)
+
+            w_C50 = np.sqrt(np.log(1 + 0.215**2))
+            w_gamma = np.sqrt(np.log(1 + 0.191**2))
+            w_E0 = np.sqrt(np.log(1 + 0.0562**2))
+
+        elif self.hill_model == 'Szenohradszky':
+            self.C50 = hill_param.get('C50', 1.44 - (age - 50)*0.00862)
+            self.gamma = hill_param.get('gamma', 8.30 - (age - 50)*0.0981)
+            self.E0 = hill_param.get('E0', 107)
+
+            w_C50 = np.sqrt(np.log(1 + 0.188**2))
+            w_gamma = np.sqrt(np.log(1 + 0.221**2))
+            w_E0 = np.sqrt(np.log(1 + 0.0571**2))
+
+        elif self.hill_model == 'Cooper':
+            self.C50 = hill_param.get('C50', 0.980 - (age - 50)*0.00557)
+            self.gamma = hill_param.get('gamma', 6.18 - (age - 50)*0.0341 - sex*1.32)
+            self.E0 = hill_param.get('E0', 107)
+
+            w_C50 = np.sqrt(np.log(1 + 0.221**2))
+            w_gamma = np.sqrt(np.log(1 + 0.168**2))
+            w_E0 = np.sqrt(np.log(1 + 0.0576**2))
+
+        elif self.hill_model == 'Alvarez-Gomez':
+            self.C50 = hill_param.get('C50', 0.9 - (age - 50)*0.00539)
+            self.gamma = hill_param.get('gamma', 5.99 - (age - 50)*0.0443 - sex*1.24)
+            self.E0 = hill_param.get('E0', 107)
+
+            w_C50 = np.sqrt(np.log(1 + 0.229**2))
+            w_gamma = np.sqrt(np.log(1 + 0.186**2))
+            w_E0 = np.sqrt(np.log(1 + 0.0576**2))
+
+        if random:
+            if hill_model == "Weatherley":
+                print("Warning: the standard deviation of the Weatherley model are not know," +
+                      " it is set to 100% for each variable")
+
+            self.C50 *= np.exp(np.random.normal(scale=w_C50))
+            self.gamma *= np.exp(np.random.normal(scale=w_gamma))
+            self.E0 *= np.exp(np.random.normal(scale=w_E0))
+
 
     def compute_tof(self, Ce):
         """Compute TOF from atracurium effect site concentration.
@@ -1521,8 +1600,8 @@ class TOF_model:
 
         """
 
-        if self.hill_model == 'Weatherley':
-            tof = (100 * self.C50**self.gamma) / (self.C50**self.gamma + Ce**self.gamma)
+        # if self.hill_model == 'Weatherley':
+        tof = self.E0*(self.C50**self.gamma) / (self.C50**self.gamma + Ce**self.gamma)
 
         return tof
 
@@ -1532,7 +1611,7 @@ class TOF_model:
         tof = self.compute_tof(ce)
         plt.figure()
         plt.plot(ce, tof)
-        plt.xlabel('Atracurium Ce [μg/mL]')
+        plt.xlabel(f'{self.drug} Ce [μg/mL]')
         plt.ylabel('TOF')
         plt.grid(True)
         plt.ylim(0, 100)

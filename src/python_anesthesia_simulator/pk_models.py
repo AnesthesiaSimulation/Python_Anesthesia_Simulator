@@ -12,8 +12,9 @@ from scipy.stats import truncnorm
 class CompartmentModel:
     """PKmodel class modelize the PK model of propofol, remifentanil or norepinephrine drug. Simulate the drug distribution in the body.
 
-    Use a 6 compartement model for propofol, a 5 compartement model for remifentanil
+    Use a 4 compartement model for propofol and remifentanil
     and a 1 compartement model for norepinephrine.
+
     The model is a LTI model with the form:
 
     .. math::  x(k+1)= Ax(k) + Bu(k)
@@ -21,8 +22,7 @@ class CompartmentModel:
 
     The state vector is the concentration of the drug in each compartement in the following order:
 
-    * blood, muscles, fat, BIS effect-site, MAP effect-site 1, MAP effect-site 2 for propofol;
-    * blood, muscles, fat, BIS effect-site, MAP effect-site 1 for remifentanil;
+    * blood, muscles, fat, BIS effect-site for propofol and Remifentanil;
     * blood for norepinephrine;
 
     The output of the model is:
@@ -37,13 +37,14 @@ class CompartmentModel:
     lbm : float
         lean body mass index.
     drug : str
-        can be "Propofol", "Remifentanil" or "Norepinephrine".
+        can be "Propofol", "Remifentanil", "Norepinephrine", or "Rocuronium".
     model : str, optional
         Could be "Schnider"[Schnider1999]_, "Marsh_initial"[Marsh1991]_, "Marsh_modified"[Struys2000]_,
         "Shuttler"[Schuttler2000]_ or "Eleveld"[Eleveld2018]_ for Propofol.
         "Minto"[Minto1997]_, or "Eleveld"[Eleveld2017]_ for Remifentanil.
         "Beloeil"[Beloeil2005]_, "Oualha"[Oualha2014]_, or "Li"[Li2024]_ for Norepinephrine.
-        The default is "Schnider" for Propofol, "Minto" for Remifentanil, and "Beloeil" for Norepinephrine.
+        "Wierda"[Wierda1991]_, "Szenohradszky"[Szenohradszky1992]_, "Cooper"[Cooper1993]_, or "Alvarez-Gomez"[Alvarez-Gomez1994]_  for Rocuronium.
+        The default is "Schnider" for Propofol, "Minto" for Remifentanil, "Beloeil" for Norepinephrine, and "Wierda" for Rocuronium.
     ts : float, optional
         Sampling time, in s. The default is 1.
     random : bool, optional
@@ -64,7 +65,7 @@ class CompartmentModel:
     ts : float
         Sampling time, in s.
     drug : str
-        can be "Propofol", "Remifentanil" or "Norepinephrine".
+        can be "Propofol", "Remifentanil", "Norepinephrine", or "Rocuronium".
     A_init : np.ndarray
         Initial value of the matrix A.
     B_init : np.ndarray
@@ -113,6 +114,22 @@ class CompartmentModel:
     .. [Li2024] Y. Li et al., “Population Pharmacokinetic Modelling of Norepinephrine
             in Healthy Volunteers Prior to and During General Anesthesia,” Clin Pharmacokinet,
             vol. 63, no. 11, pp. 1597–1608, Nov. 2024, doi: 10.1007/s40262-024-01430-y.
+    .. [Alvarez-Gomez1994] Alvarez-Gomez, J. A., M. E. Estelles, J. Fabregat, F. Perez, and A. J. Brugger.
+            « Pharmacokinetics and Pharmacodynamics of Rocuronium Bromide in Adult Patients ». European
+            Journal of Anaesthesiology Supplement 9 (janvier 1994): 53‑56.
+    .. [Cooper1993] Cooper, R. A., V. R. Maddineni, R. K. Mirakhur, J. M. K. H. Wierda, M. Brady,
+            and K. T. J. Fitzpatrick. « Time course of neuromuscular effect and pharmacokinetics of rocuronium
+            bromide (ORG 9426) during isoglurane anaesthesia in patient with and without renal failure. »
+            British Journal of Anaesthesia 71, nᵒ 2 (1993): 222‑26. doi: 10.1093/bja/71.2.222.
+    .. [Szenohradszky1992] Szenohradszky, Janos, Dennis M. Fisher, Veronica Segredo, et al.
+            « Pharmacokinetics of Rocuronium Bromide (ORG 9426) in Patients with Normal Renal Function
+            or Patients Undergoing Cadaver Renal Transplantation. » Anesthesiology 77, nᵒ 5 (1992).
+            doi: 10.1097/00000542-199211000-00010.
+    .. [Wierda1991] Wierda, J. Mark K. H., Ursula W. Kleef, Ludwina M. Lambalk, Wybe D. Kloppenburg,
+            and Sandor Agoston. « The Pharmacodynamics and Pharmacokinetics of Org 9426, a New Non-Depolarizing
+            Neuromuscular Blocking Agent, in Patients Anaesthetized with Nitrous Oxide, Halothane and Fentanyl ».
+            Canadian Journal of Anaesthesia 38, nᵒ 4 (1991): 430‑35. doi: 10.1007/BF03007578.
+
 
     """
 
@@ -501,11 +518,78 @@ class CompartmentModel:
                 w_prop_effect = np.sqrt(np.log(1+(266.2/100)**2))
                 w_u_endo = np.sqrt(np.log(1+(30.4/100)**2))
 
-        if drug == 'Propofol':
+        elif drug == 'Rocuronium':
+            if self.model is None:
+                self.model = 'Wierda'  # set defaut value
+
+            # see Masui, Kenichi, Sayaka Ishigaki, Atsuko Tomita, et Hiroshi Otake. « Rocuronium Pharmacodynamic
+            # Models for Published Five Pharmacokinetic Models: Age and Sex Are Covariates in Pharmacodynamic
+            # Models ». Journal of Anesthesia 32, nᵒ 5 (2018): 709‑16. https://doi.org/10.1007/s00540-018-2543-3.
+            # for a table with all the model coefficient
+
+            if self.model == 'Wierda':
+                v1 = 0.044 * weight  # [l]
+                cl1 = 0.1 * v1     # [l/min]
+                cl2 = 0.21 * v1    # [l/min]
+                cl3 = 0.028 * v1   # [l/min]
+                v2 = cl2 / 0.13 # [l]
+                v3 = cl3 / 0.01 # [l]
+
+                ke0 = 0.1 - (age - 50)*0.00138 # [1/min]
+                w_ke0 = np.sqrt(np.log(1 + 0.282**2))
+
+            elif self.model == 'Szenohradszky':
+                v1 = 0.0769 * weight    # [l]
+                cl1 = 0.0376 * v1   # [l/min]
+                cl2 = 0.1143 * v1   # [l/min]
+                cl3 = 0.0196 * v1   # [l/min]
+                v2 = cl2 / 0.1748   # [l]
+                v3 = cl3 / 0.0189   # [l]
+
+                ke0 = 0.247 - (age - 50)* 0.00343 # [1/min]
+                w_ke0 = np.sqrt(np.log(1 + 0.292**2))
+                
+            elif self.model == 'Cooper':
+                v1 = 0.0385 * weight    # [l]
+                cl1 = 0.119 * v1    # [l/min]
+                cl2 = 0.259 * v1    # [l/min]
+                cl3 = 0.06 * v1     # [l/min]
+                v2 = cl2 / 0.163    # [l]
+                v3 = cl3 / 0.012    # [l]
+
+                ke0 = 0.0820 - (age - 50)*0.00109 # [1/min]
+                w_ke0 = np.sqrt(np.log(1 + 0.27**2))
+
+            elif self.model == 'Alvarez-Gomez':
+                v1 = 0.057 * weight # [l]
+                cl1 = 0.0952 * v1   # [l/min]
+                cl2 = 0.2807 * v1   # [l/min]
+                cl3 = 0.0322 * v1   # [l/min]
+                v2 = cl2 / 0.2149   # [l]
+                v3 = cl3 / 0.0166   # [l]
+
+                ke0 = 0.110 + (age - 50)*0.00158 # [1/min]
+                w_ke0 = np.sqrt(np.log(1 + 0.293**2))
+
+
+            # not given in the paper so estimated at 0% for each variable
+            w_v1 = 0
+            w_v2 = 0
+            w_v3 = 0
+            w_cl1 = 0
+            w_cl2 = 0
+            w_cl3 = 0
+            w_ke0 = 0
+
+
+        if drug == 'Propofol' or drug=="Rocuronium" or drug=="Remifentanil":
             if random:
                 if self.model == 'Marsh':
                     print("Warning: the standard deviation of the Marsh model are not know," +
                           " it is set to 100% for each variable")
+                if drug == "Rocuronium":
+                    print("Warning: the standard deviation of the Rocuronium PK are not know," +
+                          " it is set to 0% for each variable, except keO which have a coherent value")
                 if truncated is not None:
                     v1 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_v1))
                     v2 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_v2))
@@ -539,41 +623,7 @@ class CompartmentModel:
             C = np.array([[0, 0, 0, 1]])
             D = np.array([[0]])
 
-        elif drug == 'Remifentanil':
-            if random:
-                if truncated is not None:
-                    v1 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_v1))
-                    v2 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_v2))
-                    v3 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_v3))
-                    cl1 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_cl1))
-                    cl2 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_cl2))
-                    cl3 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_cl3))
-                    ke0 *= np.exp(truncnorm.rvs(-truncated, truncated, scale=w_ke0))
-                else:
-                    v1 *= np.exp(np.random.normal(scale=w_v1))
-                    v2 *= np.exp(np.random.normal(scale=w_v2))
-                    v3 *= np.exp(np.random.normal(scale=w_v3))
-                    cl1 *= np.exp(np.random.normal(scale=w_cl1))
-                    cl2 *= np.exp(np.random.normal(scale=w_cl2))
-                    cl3 *= np.exp(np.random.normal(scale=w_cl3))
-                    ke0 *= np.exp(np.random.normal(scale=w_ke0))
 
-            # drug amount transfer rates [1/min]
-            k10 = cl1 / v1
-            k12 = cl2 / v1
-            k13 = cl3 / v1
-            k21 = cl2 / v2
-            k31 = cl3 / v3
-
-            # Matrices system definition
-            A = np.array([[-(k10 + k12 + k13), k12, k13, 0],
-                          [k21, -k21, 0, 0],
-                          [k31, 0, -k31, 0],
-                          [ke0, 0, 0, -ke0]])/60  # 1/s
-
-            B = np.transpose(np.array([[1/v1, 0, 0, 0]]))  # 1/L
-            C = np.array([[0, 0, 0, 1]])
-            D = np.array([[0]])
 
         elif drug == 'Norepinephrine':
             if random:
@@ -650,12 +700,12 @@ class CompartmentModel:
         Parameters
         ----------
         u : float
-            Infusion rate (mg/s for Propofol, µg/s for Remifentanil and Norepinephrine).
+            Infusion rate (mg/s for Propofol and Rocuronium, µg/s for Remifentanil and Norepinephrine).
 
         Returns
         -------
         numpy array
-            Actual effect site concentration (µg/mL for Propofol and ng/mL
+            Actual effect site concentration (µg/mL for Propofol and Rocuronium, ng/mL
             for Remifentanil and Norepinephrine).
 
         """

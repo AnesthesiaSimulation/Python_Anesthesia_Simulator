@@ -55,9 +55,13 @@ test_model_default_one_step = AtracuriumModel([age, height, weight_test_model_de
 test_model_custom_one_step = AtracuriumModel([age, height, weight_test_model_default, sex],
                                              model_params=pk_parameters_custom, ts=ts)
 # Create Atracurium PD model objects
-test_hill_default = TOF_model()
-test_hill_custom = TOF_model(hill_param=pd_parameters_custom)
+test_hill_default = TOF_model([age, height, weight_test_model_default, gender], hill_model = "Weatherley")
+test_hill_custom = TOF_model([age, height, weight_test_model_default, gender], hill_model = "Weatherley", hill_param= pd_parameters_custom)
 # test_hill_custom.plot_surface()
+
+# Create Patient objects that implements the atracurium models
+George_1 = Patient([age, height, weight_test_model_default, gender], model_nmb = "WardWeatherleyLago", model_tof = "Weatherley")
+George_one_step = Patient([age, height, weight_test_model_default, gender], model_nmb = "WardWeatherleyLago", model_tof = "Weatherley")
 
 # Simulation parameters
 Tsim = 60*100
@@ -95,8 +99,8 @@ recovery_idx_custom = np.where(tof_custom <= 50)[0][-1]
 recovery_time_custom = time[recovery_idx_custom]
 
 # Simulate the free response to a bolus administration with the Patient object
-df_george_1 = George_1.full_sim(u_atra=atracurium_infusion_profile,
-                                x0_atra=x0)
+df_george_1 = George_1.full_sim(u_nmb=atracurium_infusion_profile,
+                  x0_nmb=x0)
 tof_george_1 = df_george_1.TOF
 # Find response peak and its timing
 peak_idx_george_1 = np.argmin(tof_george_1)
@@ -138,12 +142,12 @@ peak_time_custom_one_step = time[peak_idx_custom_one_step]
 recovery_idx_custom_one_step = np.where(tof_custom_one_step <= 50)[0][-2]
 recovery_time_custom_one_step = time[recovery_idx_custom_one_step]
 
-George_one_step.initialized_at_given_state(x0_atra=x0)
-simu_Gerorge_one_step = Simulator(George_one_step)
-for k in range(Nsim-1):
+George_one_step.initialized_at_given_state(x0_nmb= x0)
+for k in range(Nsim-1):    
     uAtra_k = atracurium_infusion_profile[k]
-    simu_Gerorge_one_step.one_step(input_atra=uAtra_k)
-tof_george_one_step = simu_Gerorge_one_step.dataframe['TOF']
+    George_one_step.one_step(u_nmb=uAtra_k,
+                      noise=False)    
+tof_george_one_step = George_one_step.dataframe['TOF']
 # Find response peak and its timing
 peak_idx_george_one_step = np.argmin(tof_george_one_step)
 min_tof_george_one_step = tof_george_one_step[peak_idx_george_one_step]
@@ -191,12 +195,19 @@ test_model_default_test_2 = AtracuriumModel([age_test_2, height_test_2, weight_t
 test_model_custom_test_2 = AtracuriumModel([age_test_2, height_test_2, weight_test_2, sex_test_2],
                                            model_params=pk_parameters_custom_test_2, ts=ts_test_2)
 # Create Atracurium PD model objects
-test_hill_default_test_2 = TOF_model()
-test_hill_custom_test_2 = TOF_model(hill_param=pd_parameters_custom_test_2)
+test_hill_default_test_2 = TOF_model([age_test_2, height_test_2, weight_test_2, gender_test_2], hill_model = "Weatherley")
+test_hill_custom_test_2 = TOF_model([age_test_2, height_test_2, weight_test_2, gender_test_2], hill_model = "Weatherley", hill_param= pd_parameters_custom_test_2)
 # test_hill_custom.plot_surface()
 
 # Create Patient objects that implements the atracurium models
-George_test_2 = Patient([age_test_2, height_test_2, weight_test_2, sex_test_2], ts=ts_test_2)
+George_test_2 = Patient([age_test_2, height_test_2, weight_test_2, gender_test_2], model_nmb = "WardWeatherleyLago", model_tof = "Weatherley")
+
+# Simulation parameters
+Tsim_test_2 = 60*100
+ts_test_2 = 1
+Nsim_test_2 = int(Tsim_test_2/ts_test_2)
+atracurium_infusion_profile_test_2 = np.zeros((Nsim_test_2,))        # ug/s
+time_test_2 = np.arange(Tsim_test_2)  # Time axis
 
 
 # Simulation parameters
@@ -221,7 +232,7 @@ induction_idx_custom_test_2 = np.where(tof_custom_test_2 <= 20)[0][0]
 induction_time_custom_test_2 = time[induction_idx_custom_test_2]
 
 # Simulate the free response to a bolus administration with the Patient object
-df_george_test_2 = George_test_2.full_sim(u_atra=atracurium_infusion_profile_test_2)
+df_george_test_2 = George_test_2.full_sim(u_nmb=atracurium_infusion_profile_test_2)
 tof_george_test_2 = df_george_test_2.TOF
 # Find  induction time TOF<= 20
 induction_idx_george_2 = np.where(tof_george_test_2 <= 20)[0][0]
@@ -286,14 +297,14 @@ if __name__ == '__main__':
     plt.figure(figsize=(10, 6))
     for i in range(4):
         plt.plot(time, x_default[i], label=f'x{i+1}(t)')
-    plt.plot(df_george_1.Time, df_george_1.x_atra_1, '--')
-    plt.plot(df_george_1.Time, df_george_1.x_atra_2, '--')
-    plt.plot(df_george_1.Time, df_george_1.x_atra_3, '--')
-    plt.plot(df_george_1.Time, df_george_1.x_atra_4, '--')
-    plt.plot(simu_Gerorge_one_step.dataframe['Time'], simu_Gerorge_one_step.dataframe['x_atra_1'], '--')
-    plt.plot(simu_Gerorge_one_step.dataframe['Time'], simu_Gerorge_one_step.dataframe['x_atra_2'], '--')
-    plt.plot(simu_Gerorge_one_step.dataframe['Time'], simu_Gerorge_one_step.dataframe['x_atra_3'], '--')
-    plt.plot(simu_Gerorge_one_step.dataframe['Time'], simu_Gerorge_one_step.dataframe['x_atra_4'], '--')
+    plt.plot(df_george_1.Time, df_george_1.x_nmb_1, '--')
+    plt.plot(df_george_1.Time, df_george_1.x_nmb_2, '--')
+    plt.plot(df_george_1.Time, df_george_1.x_nmb_3, '--')
+    plt.plot(df_george_1.Time, df_george_1.x_nmb_4, '--')
+    plt.plot(George_one_step.dataframe['Time'], George_one_step.dataframe['x_nmb_1'], '--')
+    plt.plot(George_one_step.dataframe['Time'], George_one_step.dataframe['x_nmb_2'], '--')
+    plt.plot(George_one_step.dataframe['Time'], George_one_step.dataframe['x_nmb_3'], '--')
+    plt.plot(George_one_step.dataframe['Time'], George_one_step.dataframe['x_nmb_4'], '--')
     plt.xlabel('Time (s)')
     plt.ylabel('State Value')
     plt.title('Evolution of States Over Time')
@@ -355,4 +366,3 @@ if __name__ == '__main__':
     plt.show()
 
     test_default_initialization_atracurium()
-    print('All tests passed successfully!')
